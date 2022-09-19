@@ -38,6 +38,8 @@ from .resources import *
 from .LoaderCEN_dialog import LoaderCENDialog
 import os.path
 import urllib
+import tempfile
+
 
 
 class LoaderCEN:
@@ -71,16 +73,20 @@ class LoaderCEN:
         self.movie = QMovie(str(self.RelativePath) + "/loading.gif")  # récupération du gif via le chemin relatif du plugin
         self.dlg.label_3.setMovie(self.movie)
         self.dlg.label_2.setMovie(self.movie)
+        self.dlg.label_10.setMovie(self.movie)
+
         self.movie.start()
 
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
+
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
-        self.dlg.commandLinkButton.clicked.connect(self.chargement_dalles_MNT)
+        self.dlg.comboBox.currentIndexChanged.connect(self.chargement_dalles_MNT)
 
         self.dlg.commandLinkButton_2.clicked.connect(self.chargement_dalles_orthos_20cm)
 
@@ -90,6 +96,18 @@ class LoaderCEN:
 
         self.dlg.pushButton_2.clicked.connect(self.orthos)
 
+        self.dlg.pushButton_3.clicked.connect(self.chargement_cadastre)
+
+        #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
+        #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
+
+        dalles_dept = ["Allier", "Charente", "Charente-Maritime", "Correze", "Creuse", "Dordogne", "Gironde", "Landes", "Lot-et-Garonne", "Pyrenees-Atlantique", "Deux-Sevres", "Vienne", "Haute-Vienne"]
+        self.dlg.comboBox.addItems(set(dalles_dept))
+
+
+
+        with tempfile.TemporaryDirectory() as self.tmpdirname:
+            print('le dossier temporaire a été crée', self.tmpdirname)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -223,7 +241,17 @@ class LoaderCEN:
 
     def chargement_dalles_MNT(self):
 
-        self.iface.addVectorLayer('https://github.com/wanderzen91/LoaderCEN/raw/main/dalles_mnt.geojson', 'dalles_MNT_1_m', 'ogr')
+        if self.dlg.comboBox.currentText() == "Choix du département":
+            QMessageBox.question(self.iface.mainWindow(), u"Choix du département", u"Veuillez sélectionner un département afin de charger le dallage MNT 1 mètre associé !", QMessageBox.Ok)
+
+        else:
+            for lyr in QgsProject.instance().mapLayers().values():
+
+                if lyr.name() == "dalles_MNT_1_m":
+                    QgsProject.instance().removeMapLayers([lyr.id()])
+
+        
+            self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/' + self.dlg.comboBox.currentText() + '.geojson', 'dalles_MNT_1_m', 'ogr')
 
     def chargement_dalles_orthos_50cm(self):
 
@@ -245,95 +273,161 @@ class LoaderCEN:
 
         self.dlg.label_2.show()
         self.dlg.label_3.show()
+        self.dlg.label_10.show()
 
-        dossier_MNT = 'C:/Users/Romain/Desktop/RGEALTI_1-0_EXT_1M_PPK_ASC_3/RGEALTI_2-0_1M_ASC_LAMB93-IGN69_D019_2019-09-09/RGEALTI/1_DONNEES_LIVRAISON_2021-01-00151/RGEALTI_MNT_1M_ASC_LAMB93_IGN69_D019_20210118/'
+        dossier_MNT = 'http://51.91.38.98/rgealti/'
 
         liste_couches = []
 
-        self.dalles_mnt = QgsProject.instance().mapLayersByName('dalles_MNT_1_m')[0]
+        if QgsProject.instance().mapLayersByName('dalles_MNT_1_m'):
 
-        if self.dalles_mnt.selectedFeatures()[0] == 0:
-            QMessageBox.question(self.iface.mainWindow(), u"Aucune dalle sélectionnée", u"Veuillez sélectionner une dalle depuis QGIS avant de tenter de charger le fichier associé !", QMessageBox.Ok)
+            self.dalles_mnt = QgsProject.instance().mapLayersByName('dalles_MNT_1_m')[0]
 
-        else:
-
-            for f in self.dalles_mnt.selectedFeatures():
-                # refer to a specific values of a field index
-                NOM_COUCHE = f.attribute(0)  # results in Group 1
-                liste_couches.append(NOM_COUCHE)
-
-            if len(liste_couches) > 15:
-                self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 15.", QMessageBox.Ok)
-                if self.QMBquestion == QMessageBox.Ok:
-                    print("Sélectionner moins de 15 dalles à la fois")
+            if len(self.dalles_mnt.selectedFeatures()) == 0:
+                QMessageBox.question(self.iface.mainWindow(), u"Aucune dalle sélectionnée", u"Veuillez sélectionner une dalle depuis QGIS avant de tenter de charger le fichier associé !", QMessageBox.Ok)
 
             else:
-                for couches in liste_couches:
-                    iface.addRasterLayer(dossier_MNT + str(couches) + '.asc', str(NOM_COUCHE))
+
+                for f in self.dalles_mnt.selectedFeatures():
+                    # refer to a specific values of a field index
+                    NOM_COUCHE = f.attribute(0).replace('1-0_MNT_EXT', 'FXX').split('LAMB93_IGN69', 1)[0]+'MNT_LAMB93_IGN69'  # results in Group 1
+                    liste_couches.append(NOM_COUCHE)
+
+                if len(liste_couches) > 15:
+                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 15.", QMessageBox.Ok)
+                    if self.QMBquestion == QMessageBox.Ok:
+                        print("Sélectionner moins de 15 dalles à la fois")
+
+                else:
+                    for couches in liste_couches:
+                        alg_params = {
+                            'DATA': '',
+                            'METHOD': 0,  # GET
+                            'OUTPUT': self.tmpdirname + str(couches),
+                            'URL': dossier_MNT + str(couches) + '.asc'
+                        }
+                        processing.run('native:filedownloader', alg_params)
+                        iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
+                        print(couches)
+        else:
+            QMessageBox.question(self.iface.mainWindow(), u"Aucune couche 'dalles_MNT_1_m' détectée", u"Veuillez charger la couche 'dalles_MNT_1_m' depuis le menu 'choix des dalles' pour continuer.", QMessageBox.Ok)
+
 
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
 
 
     def orthos(self):
 
         self.dlg.label_2.show()
         self.dlg.label_3.show()
+        self.dlg.label_10.show()
 
         liste_couches = []
 
-        if QgsProject.instance().mapLayersByName('dalles_ortho_50cm'):
-            self.dalles_ortho = QgsProject.instance().mapLayersByName('dalles_ortho_50cm')[0]
-            dossier_orthos = 'http://51.91.38.96/DALLESJP2-50cm/'
-        elif QgsProject.instance().mapLayersByName('dalles_ortho_20cm'):
-            self.dalles_ortho = QgsProject.instance().mapLayersByName('dalles_ortho_20cm')[0]
-            dossier_orthos = 'http://51.91.38.96/DALLESJP2-20cm/'
+        if QgsProject.instance().mapLayersByName('dalles_ortho_50cm') or QgsProject.instance().mapLayersByName('dalles_ortho_20cm'):
 
 
-        if len(self.dalles_ortho.selectedFeatures()) == 0:
-            QMessageBox.question(self.iface.mainWindow(), u"Aucune dalle sélectionnée", u"Veuillez sélectionner une dalle depuis QGIS avant de tenter de charger le fichier associé !", QMessageBox.Ok)
+            if QgsProject.instance().mapLayersByName('dalles_ortho_50cm'):
+                self.dalles_ortho = QgsProject.instance().mapLayersByName('dalles_ortho_50cm')[0]
+                dossier_orthos = 'http://51.91.38.98/bdortho/50cm/'
+            elif QgsProject.instance().mapLayersByName('dalles_ortho_20cm'):
+                self.dalles_ortho = QgsProject.instance().mapLayersByName('dalles_ortho_20cm')[0]
+                dossier_orthos = 'http://51.91.38.98/bdortho/20cm/'
 
-        else:
 
-            for f in self.dalles_ortho.selectedFeatures():
-                # refer to a specific values of a field index
-                NOM_COUCHE = f.attribute(0)  # results in Group 1
-                NOM_COUCHE = NOM_COUCHE[2:]
-                liste_couches.append(NOM_COUCHE)
-
-            if len(liste_couches) > 4:
-                self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 4.", QMessageBox.Ok)
-                if self.QMBquestion == QMessageBox.Ok:
-                    print("Sélectionner moins de 15 dalles à la fois")
+            if len(self.dalles_ortho.selectedFeatures()) == 0:
+                QMessageBox.question(self.iface.mainWindow(), u"Aucune dalle sélectionnée", u"Veuillez sélectionner une dalle depuis QGIS avant de tenter de charger le fichier associé !", QMessageBox.Ok)
 
             else:
 
-                for couches in liste_couches:
-                    alg_params = {
-                        'DATA': '',
-                        'METHOD': 0,  # GET
-                        'OUTPUT': 'C:/Users/Romain/Desktop/' + str(couches),
-                        'URL': dossier_orthos + str(couches)
-                    }
-                    processing.run('native:filedownloader', alg_params)
+                for f in self.dalles_ortho.selectedFeatures():
+                    # refer to a specific values of a field index
+                    NOM_COUCHE = f.attribute(0)  # results in Group 1
+                    NOM_COUCHE = NOM_COUCHE[2:]
+                    liste_couches.append(NOM_COUCHE)
 
-                    iface.addRasterLayer('C:/Users/Romain/Desktop/' + str(couches), str(couches))
-                    print(couches)
+                if len(liste_couches) > 4:
+                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 4.", QMessageBox.Ok)
+                    if self.QMBquestion == QMessageBox.Ok:
+                        print("Sélectionner moins de 15 dalles à la fois")
 
-                print("TADAM")
+                else:
 
-                self.dlg.label_2.hide()
-                self.dlg.label_3.hide()
+                    for couches in liste_couches:
+                        alg_params = {
+                            'DATA': '',
+                            'METHOD': 0,  # GET
+                            'OUTPUT': self.tmpdirname + str(couches),
+                            'URL': dossier_orthos + str(couches)
+                        }
+                        processing.run('native:filedownloader', alg_params)
 
-    # self.iface.actionPan().trigger()
+                        iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
+                        print(couches)
 
-    # def canvasPressEvent(event):
-    #
-    #     print('double clicked')
-    #
-    #
-    #
-    #
-    # tool = QgsMapTool(iface.mapCanvas())
-    # tool.canvasDoubleClickEvent = canvasPressEvent
-    # iface.mapCanvas().setMapTool(tool)
+                    print("TADAM")
+        else:
+            QMessageBox.question(self.iface.mainWindow(), u"Aucune couche 'dalles_ortho' détectée", u"Veuillez sélectionner l'une des deux couches 'dalles_orthos' dans le menu 'choix des dalles' pour continuer.", QMessageBox.Ok)
+
+        self.dlg.label_2.hide()
+        self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
+
+
+    def chargement_cadastre(self):
+
+        self.dlg.label_2.show()
+        self.dlg.label_3.show()
+        self.dlg.label_10.show()
+
+        numero_dept = self.dlg.lineEdit.text()[:2]
+
+        uri = "https://opendata.cen-nouvelle-aquitaine.org/administratif/wfs?VERSION=1.0.0&TYPENAME=administratif:parcelle_", numero_dept, "&SRSNAME=EPSG:4326&request=GetFeature&cql_filter=commune='", self.dlg.lineEdit.text(), "'"
+        uri = "".join(uri)
+
+        cadastre = QgsVectorLayer(uri, self.dlg.lineEdit.text(), "WFS")
+
+        QgsProject.instance().addMapLayer(cadastre)
+
+        nom_couche = "parcelles_cadastrales_commune_" + self.dlg.lineEdit.text()
+
+        cadastre.setName(nom_couche)
+        print(cadastre.extent())
+        # Find out if we need to transform coordinates
+        proj = QgsProject.instance()
+        if cadastre.crs().authid() != proj.crs().authid():
+            print("La couche 'cadastre' et le projet QGIS ne partagent pas le même CRS",
+                  cadastre.crs().authid(),
+                  proj.crs().authid()
+                  )
+            tr = QgsCoordinateTransform(cadastre.crs(), proj.crs(), proj)
+            ex = tr.transform(cadastre.extent())
+
+            iface.mapCanvas().setExtent(ex)
+            iface.mapCanvas().refresh()
+        else:
+            iface.mapCanvas().setExtent(cadastre.extent())
+
+
+        iface.mapCanvas().refresh()
+
+        # if cadastre.featureCount() == 0:
+        #     print(cadastre.featureCount())
+        #     QMessageBox.question(self.iface.mainWindow(), u"Couche vide", u"Code Insee inconnu ! ", QMessageBox.Ok)
+
+        # layermap = proj.mapLayers()
+        # RemoveLayers = []
+        # for name, layer in layermap.items():
+        #     if layer.isValid():
+        #         if layer.type() == QgsMapLayer.VectorLayer:
+        #             if layer.featureCount() == 0:
+        #                 RemoveLayers.append(layer.id())
+        # if len(RemoveLayers) > 0:
+        #     proj.instance().removeMapLayers(RemoveLayers)
+
+
+        self.dlg.label_2.hide()
+        self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
