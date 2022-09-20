@@ -40,8 +40,6 @@ import os.path
 import urllib
 import tempfile
 
-
-
 class LoaderCEN:
     """QGIS Plugin Implementation."""
 
