@@ -25,7 +25,7 @@ from .LoaderCEN_dialog import LoaderCENDialog
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
-from PyQt5 import QtWidgets
+from PyQt5 import *
 
 from qgis.core import *
 from qgis.gui import *
@@ -39,6 +39,24 @@ from .LoaderCEN_dialog import LoaderCENDialog
 import os.path
 import urllib
 import tempfile
+
+
+
+class Popup(QWidget):
+    def __init__(self, parent=None):
+        super(Popup, self).__init__(parent)
+
+        self.plugin_dir = os.path.dirname(__file__)
+
+        self.text_edit = QTextBrowser()
+        text = open(self.plugin_dir +'/info_changelog.html').read()
+        self.text_edit.setHtml(text)
+        self.text_edit.setFont(QtGui.QFont("Calibri",weight=QtGui.QFont.Bold))
+
+
+        self.text_edit.setWindowTitle("Nouveautés")
+        self.text_edit.setMinimumSize(500,200)
+        self.text_edit.setMaximumSize(500,200)
 
 class LoaderCEN:
     """QGIS Plugin Implementation."""
@@ -86,6 +104,9 @@ class LoaderCEN:
 
         self.dlg.comboBox.currentIndexChanged.connect(self.chargement_dalles_MNT)
 
+        self.dlg.commandLinkButton.clicked.connect(self.popup)
+
+
         self.dlg.commandLinkButton_2.clicked.connect(self.chargement_dalles_orthos_20cm)
 
         self.dlg.commandLinkButton_3.clicked.connect(self.chargement_dalles_orthos_50cm)
@@ -103,9 +124,32 @@ class LoaderCEN:
         self.dlg.comboBox.addItems(set(dalles_dept))
 
 
+        metadonnees_plugin = open(self.plugin_dir + '/metadata.txt')
+        infos_metadonnees = metadonnees_plugin.readlines()
 
-        with tempfile.TemporaryDirectory() as self.tmpdirname:
-            print('le dossier temporaire a été crée', self.tmpdirname)
+        derniere_version = urllib.request.urlopen("https://sig.dsi-cen.org/qgis/downloads/last_version_loadercen.txt")
+        num_last_version = derniere_version.readlines()[0].decode("utf-8")
+
+        # print(":"+num_last_version+":")
+        # print(":"+infos_metadonnees[8]+":")
+        #
+        # print(type(num_last_version))
+        # print(type(infos_metadonnees[8]))
+        #
+        # print(len(num_last_version))
+        # print(len(infos_metadonnees[8]))
+
+        version_utilisateur = infos_metadonnees[8].splitlines()
+
+        if infos_metadonnees[8].splitlines() == num_last_version.splitlines():
+            iface.messageBar().pushMessage("Plugin à jour", "Votre version de LoaderCEN %s est à jour !" %version_utilisateur, level=Qgis.Success, duration=5)
+        else:
+            iface.messageBar().pushMessage("Information :", "Une nouvelle version de LoaderCEN est disponible, veuillez mettre à jour le plugin !", level=Qgis.Info, duration=120)
+
+
+
+        # with tempfile.TemporaryDirectory() as self.tmpdirname:
+        #     print('le dossier temporaire a été crée', self.tmpdirname)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -429,3 +473,9 @@ class LoaderCEN:
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
+
+
+    def popup(self):
+
+        self.dialog = Popup()  # +++ - self
+        self.dialog.text_edit.show()
