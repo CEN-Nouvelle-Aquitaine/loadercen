@@ -148,8 +148,8 @@ class LoaderCEN:
 
 
 
-        # with tempfile.TemporaryDirectory() as self.tmpdirname:
-        #     print('le dossier temporaire a été crée', self.tmpdirname)
+        with tempfile.TemporaryDirectory() as self.tmpdirname:
+            print('le dossier temporaire a été crée', self.tmpdirname)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
