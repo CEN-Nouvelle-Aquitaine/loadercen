@@ -49,14 +49,18 @@ class Popup(QWidget):
         self.plugin_dir = os.path.dirname(__file__)
 
         self.text_edit = QTextBrowser()
-        text = open(self.plugin_dir +'/info_changelog.html').read()
-        self.text_edit.setHtml(text)
-        self.text_edit.setFont(QtGui.QFont("Calibri",weight=QtGui.QFont.Bold))
+        fp = urllib.request.urlopen("https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loaderCEN/main/info_changelog.html")
+        mybytes = fp.read()
+        html_changelog = mybytes.decode("utf8")
+        fp.close()
 
+        self.text_edit.setHtml(html_changelog)
+        self.text_edit.setFont(QtGui.QFont("Calibri",weight=QtGui.QFont.Bold))
+        self.text_edit.anchorClicked.connect(QtGui.QDesktopServices.openUrl)
+        self.text_edit.setOpenLinks(False)
 
         self.text_edit.setWindowTitle("Nouveautés")
-        self.text_edit.setMinimumSize(500,200)
-        self.text_edit.setMaximumSize(500,200)
+        self.text_edit.setMinimumSize(600,300)
 
 class LoaderCEN:
     """QGIS Plugin Implementation."""
@@ -293,23 +297,56 @@ class LoaderCEN:
                     QgsProject.instance().removeMapLayers([lyr.id()])
 
         
-            self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/' + self.dlg.comboBox.currentText() + '.geojson', 'dalles_MNT_1_m', 'ogr')
+            dalles_MNT = self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/' + self.dlg.comboBox.currentText() + '.geojson', 'dalles_MNT_1_m', 'ogr')
+
+            mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
+                                                    'color_border': '#22222',
+                                                    'width_border': '0.3'})
+
+            myRenderer = dalles_MNT.renderer()
+
+            myRenderer.setSymbol(mySymbol1)
+
+            dalles_MNT.triggerRepaint()
+
+            ex = dalles_MNT.extent()
+            iface.mapCanvas().setExtent(ex)
 
     def chargement_dalles_orthos_50cm(self):
 
-        self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_50cm.geojson', 'dalles_ortho_50cm', 'ogr')
+        dalles_orthos_50cm = self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_50cm.geojson', 'dalles_ortho_50cm', 'ogr')
 
         for lyr in QgsProject.instance().mapLayers().values():
             if lyr.name() == "dalles_ortho_20cm":
                 QgsProject.instance().removeMapLayers([lyr.id()])
 
+        mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
+                                                'color_border': '#22222',
+                                                'width_border': '0.3'})
+
+        myRenderer = dalles_orthos_50cm.renderer()
+
+        myRenderer.setSymbol(mySymbol1)
+
+        dalles_orthos_50cm.triggerRepaint()
+
     def chargement_dalles_orthos_20cm(self):
 
-        self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_20cm.geojson', 'dalles_ortho_20cm', 'ogr')
+        dalles_orthos_20cm =self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_20cm.geojson', 'dalles_ortho_20cm', 'ogr')
 
         for lyr in QgsProject.instance().mapLayers().values():
             if lyr.name() == "dalles_ortho_50cm":
                 QgsProject.instance().removeMapLayers([lyr.id()])
+
+        mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
+                                                'color_border': '#22222',
+                                                'width_border': '0.3'})
+
+        myRenderer = dalles_orthos_20cm.renderer()
+
+        myRenderer.setSymbol(mySymbol1)
+
+        dalles_orthos_20cm.triggerRepaint()
 
     def chargement_MNT_1m(self):
 
