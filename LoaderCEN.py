@@ -39,6 +39,7 @@ from .LoaderCEN_dialog import LoaderCENDialog
 import os.path
 import urllib
 import tempfile
+from urllib import request, parse
 
 
 
@@ -88,22 +89,26 @@ class LoaderCEN:
         self.menu = self.tr(u'&LoaderCEN')
         self.dlg = LoaderCENDialog()
 
+        self.plugin_path = os.path.dirname(__file__)
+
         self.RelativePath = Path(__file__).parent.resolve()
 
         self.movie = QMovie(str(self.RelativePath) + "/loading.gif")  # récupération du gif via le chemin relatif du plugin
         self.dlg.label_3.setMovie(self.movie)
         self.dlg.label_2.setMovie(self.movie)
         self.dlg.label_10.setMovie(self.movie)
+        self.dlg.label_12.setMovie(self.movie)
 
         self.movie.start()
 
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
-
+        self.dlg.label_12.hide()
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
+
         self.first_start = None
 
         self.dlg.comboBox.currentIndexChanged.connect(self.chargement_dalles_MNT)
@@ -121,12 +126,18 @@ class LoaderCEN:
 
         self.dlg.pushButton_3.clicked.connect(self.chargement_cadastre)
 
+        self.dlg.comboBox_2.currentIndexChanged.connect(self.emprise_drone)
+
+        self.dlg.pushButton_4.clicked.connect(self.chargement_drone)
+
+
         #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
         #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
 
         dalles_dept = ["Allier", "Charente", "Charente-Maritime", "Correze", "Creuse", "Dordogne", "Gironde", "Landes", "Lot-et-Garonne", "Pyrenees-Atlantique", "Deux-Sevres", "Vienne", "Haute-Vienne"]
         self.dlg.comboBox.addItems(set(dalles_dept))
 
+        self.dlg.comboBox_2.addItems(set(['16','17','19','23','24','33','40','47','64','79','86','87']))
 
         metadonnees_plugin = open(self.plugin_dir + '/metadata.txt')
         infos_metadonnees = metadonnees_plugin.readlines()
@@ -353,6 +364,7 @@ class LoaderCEN:
         self.dlg.label_2.show()
         self.dlg.label_3.show()
         self.dlg.label_10.show()
+        self.dlg.label_12.show()
 
         dossier_MNT = 'http://51.91.38.98/rgealti/'
 
@@ -395,13 +407,14 @@ class LoaderCEN:
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
-
+        self.dlg.label_12.hide()
 
     def orthos(self):
 
         self.dlg.label_2.show()
         self.dlg.label_3.show()
         self.dlg.label_10.show()
+        self.dlg.label_12.show()
 
         liste_couches = []
 
@@ -453,6 +466,7 @@ class LoaderCEN:
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
+        self.dlg.label_12.hide()
 
 
     def chargement_cadastre(self):
@@ -460,6 +474,7 @@ class LoaderCEN:
         self.dlg.label_2.show()
         self.dlg.label_3.show()
         self.dlg.label_10.show()
+        self.dlg.label_12.show()
 
         numero_dept = self.dlg.lineEdit.text()[:2]
 
@@ -510,6 +525,63 @@ class LoaderCEN:
         self.dlg.label_2.hide()
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
+        self.dlg.label_12.hide()
+
+
+
+    def emprise_drone(self):
+
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr.name() == "Emprise images drone":
+                QgsProject.instance().removeMapLayers([lyr.id()])
+
+        uri = "https://opendata.cen-nouvelle-aquitaine.org/drone/wfs?VERSION=1.0.0&TYPENAME=drone:emprise_ortho_drone_CEN_NA&request=GetFeature"
+        self.emprise_drone = QgsVectorLayer(uri, "Emprise images drone", "WFS")
+
+        self.emprise_drone.selectByExpression("\"dept\" IS '{0}'".format(self.dlg.comboBox_2.currentText()))
+
+        QgsProject.instance().addMapLayer(self.emprise_drone)
+
+        self.emprise_drone.loadNamedStyle(self.plugin_path + '/styles_couches/emprise_drone.qml')
+        self.emprise_drone.triggerRepaint()
+
+        iface.mapCanvas().zoomToSelected(self.emprise_drone)
+
+        iface.mapCanvas().refresh()
+
+
+        if self.emprise_drone.selectedFeatureCount() == 0:
+            print(self.emprise_drone.featureCount())
+            QMessageBox.question(self.iface.mainWindow(), u"Données non disponibles", u"Aucune données drone enregistrées sur ce département", QMessageBox.Ok)
+
+        self.emprise_drone.removeSelection()
+
+
+
+
+    def chargement_drone(self):
+
+
+        self.dlg.label_2.show()
+        self.dlg.label_3.show()
+        self.dlg.label_10.show()
+        self.dlg.label_12.show()
+
+        for feature in self.emprise_drone.selectedFeatures():
+            image_drone = feature['nomcouche']
+
+        uri = "url=https://opendata.cen-nouvelle-aquitaine.org/geoserver/drone/wms&service=WMS+Raster&version=1.0.0&crs=EPSG:2154&format=image/png&layers=",image_drone,"&styles"
+        uri = "".join(uri)
+
+        rlayer = QgsRasterLayer(uri, image_drone, "WMS")
+        QgsProject.instance().addMapLayer(rlayer)
+
+        iface.mapCanvas().zoomToSelected(self.emprise_drone)
+
+        self.dlg.label_2.hide()
+        self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
+        self.dlg.label_12.hide()
 
 
     def popup(self):

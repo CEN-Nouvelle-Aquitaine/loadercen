@@ -6,20 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>971</width>
-    <height>430</height>
+    <width>1250</width>
+    <height>460</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>620</width>
-    <height>430</height>
+    <width>1250</width>
+    <height>460</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>971</width>
-    <height>430</height>
+    <width>1250</width>
+    <height>460</height>
+   </size>
+  </property>
+  <property name="baseSize">
+   <size>
+    <width>0</width>
+    <height>0</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -30,7 +36,7 @@
     <rect>
      <x>14</x>
      <y>10</y>
-     <width>941</width>
+     <width>1221</width>
      <height>161</height>
     </rect>
    </property>
@@ -40,7 +46,7 @@
    <widget class="QCommandLinkButton" name="commandLinkButton_2">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>370</x>
       <y>40</y>
       <width>171</width>
       <height>41</height>
@@ -59,7 +65,7 @@
    <widget class="QCommandLinkButton" name="commandLinkButton_3">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>370</x>
       <y>80</y>
       <width>171</width>
       <height>41</height>
@@ -101,7 +107,7 @@
      <rect>
       <x>70</x>
       <y>50</y>
-      <width>131</width>
+      <width>141</width>
       <height>20</height>
      </rect>
     </property>
@@ -136,7 +142,7 @@
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>800</x>
+      <x>770</x>
       <y>50</y>
       <width>111</width>
       <height>20</height>
@@ -157,7 +163,7 @@
    <widget class="QLabel" name="label_8">
     <property name="geometry">
      <rect>
-      <x>720</x>
+      <x>700</x>
       <y>80</y>
       <width>21</width>
       <height>21</height>
@@ -176,7 +182,7 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>750</x>
+      <x>730</x>
       <y>80</y>
       <width>161</width>
       <height>21</height>
@@ -195,13 +201,55 @@
      <bool>true</bool>
     </property>
    </widget>
+   <widget class="QComboBox" name="comboBox_2">
+    <property name="geometry">
+     <rect>
+      <x>1030</x>
+      <y>80</y>
+      <width>141</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="editable">
+     <bool>false</bool>
+    </property>
+    <property name="insertPolicy">
+     <enum>QComboBox::InsertAlphabetically</enum>
+    </property>
+    <item>
+     <property name="text">
+      <string>Choix du département</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QLabel" name="label_11">
+    <property name="geometry">
+     <rect>
+      <x>1070</x>
+      <y>50</y>
+      <width>81</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Segoe UI</family>
+      <pointsize>10</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Drone</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_2">
    <property name="geometry">
     <rect>
      <x>14</x>
      <y>260</y>
-     <width>941</width>
+     <width>1221</width>
      <height>111</height>
     </rect>
    </property>
@@ -211,7 +259,7 @@
    <widget class="QPushButton" name="pushButton_2">
     <property name="geometry">
      <rect>
-      <x>380</x>
+      <x>360</x>
       <y>50</y>
       <width>171</width>
       <height>23</height>
@@ -237,7 +285,7 @@
    <widget class="QPushButton" name="pushButton_3">
     <property name="geometry">
      <rect>
-      <x>710</x>
+      <x>700</x>
       <y>50</y>
       <width>171</width>
       <height>23</height>
@@ -245,6 +293,19 @@
     </property>
     <property name="text">
      <string>Chargement des parcelles</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_4">
+    <property name="geometry">
+     <rect>
+      <x>1020</x>
+      <y>50</y>
+      <width>171</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Chargement des images drones</string>
     </property>
    </widget>
   </widget>
@@ -273,7 +334,7 @@
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
-     <x>450</x>
+     <x>430</x>
      <y>190</y>
      <width>51</width>
      <height>51</height>
@@ -311,10 +372,10 @@
   <widget class="QLabel" name="label_6">
    <property name="geometry">
     <rect>
-     <x>430</x>
-     <y>380</y>
-     <width>91</width>
-     <height>31</height>
+     <x>550</x>
+     <y>390</y>
+     <width>151</width>
+     <height>51</height>
     </rect>
    </property>
    <property name="text">
@@ -333,7 +394,7 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>630</x>
+     <x>620</x>
      <y>200</y>
      <width>31</width>
      <height>31</height>
@@ -352,7 +413,7 @@
   <widget class="QLabel" name="label_10">
    <property name="geometry">
     <rect>
-     <x>790</x>
+     <x>780</x>
      <y>190</y>
      <width>51</width>
      <height>51</height>
@@ -371,7 +432,7 @@
   <widget class="QCommandLinkButton" name="commandLinkButton">
    <property name="geometry">
     <rect>
-     <x>910</x>
+     <x>1190</x>
      <y>380</y>
      <width>41</width>
      <height>41</height>
@@ -395,6 +456,47 @@
      <width>25</width>
      <height>25</height>
     </size>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_12">
+   <property name="geometry">
+    <rect>
+     <x>1090</x>
+     <y>190</y>
+     <width>51</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="resources.qrc">:/plugins/LoaderCEN/loading.gif</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_13">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>950</x>
+     <y>200</y>
+     <width>31</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="resources.qrc">:/plugins/LoaderCEN/arrow.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
