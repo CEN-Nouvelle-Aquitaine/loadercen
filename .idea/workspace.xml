@@ -4,9 +4,6 @@
     <list default="true" id="735a93ee-89d2-40ad-939d-2d9b24f650ce" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LoaderCEN.py" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/info_changelog.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/metadata.txt" beforeDir="false" afterPath="$PROJECT_DIR$/metadata.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

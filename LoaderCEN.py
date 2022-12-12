@@ -40,6 +40,7 @@ import os.path
 import urllib
 import tempfile
 from urllib import request, parse
+from PyQt5.QtXml import QDomDocument
 
 
 
@@ -535,15 +536,29 @@ class LoaderCEN:
             if lyr.name() == "Emprise images drone":
                 QgsProject.instance().removeMapLayers([lyr.id()])
 
-        uri = "https://opendata.cen-nouvelle-aquitaine.org/drone/wfs?VERSION=1.0.0&TYPENAME=drone:emprise_ortho_drone_CEN_NA&request=GetFeature"
+        managerAU = QgsApplication.authManager()
+        k = managerAU.availableAuthMethodConfigs().keys()
+
+        uri = ["https://opendata.cen-nouvelle-aquitaine.org/drone/wfs?VERSION=1.0.0&TYPENAME=drone:emprise_ortho_drone_CEN_NA&authcfg=", list(k)[0] ,"&request=GetFeature"]
+        uri = "".join(uri)
+
         self.emprise_drone = QgsVectorLayer(uri, "Emprise images drone", "WFS")
 
         self.emprise_drone.selectByExpression("\"dept\" IS '{0}'".format(self.dlg.comboBox_2.currentText()))
 
         QgsProject.instance().addMapLayer(self.emprise_drone)
 
-        self.emprise_drone.loadNamedStyle(self.plugin_path + '/styles_couches/emprise_drone.qml')
+        styles_url = 'https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/fluxcen/main/styles_couches/emprise_drone.qml'
+
+        fp = urllib.request.urlopen(styles_url)
+        mybytes = fp.read()
+
+        document = QDomDocument()
+        document.setContent(mybytes)
+
+        res = self.emprise_drone.importNamedStyle(document)
         self.emprise_drone.triggerRepaint()
+
 
         iface.mapCanvas().zoomToSelected(self.emprise_drone)
 
