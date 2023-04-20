@@ -27,7 +27,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from PyQt5 import *
 
-from qgis.core import *
+from qgis.core import QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp
 from qgis.gui import *
 from qgis.utils import *
 import processing
@@ -130,6 +130,8 @@ class LoaderCEN:
         self.dlg.comboBox_2.currentIndexChanged.connect(self.emprise_drone)
 
         self.dlg.pushButton_4.clicked.connect(self.chargement_drone)
+
+        self.dlg.commandLinkButton_4.clicked.connect(self.ajout_metadata_mnt)
 
 
         #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
@@ -324,6 +326,49 @@ class LoaderCEN:
             ex = dalles_MNT.extent()
             iface.mapCanvas().setExtent(ex)
 
+            self.dlg.commandLinkButton_4.setEnabled(True)
+
+    def ajout_metadata_mnt(self):
+
+        vectorLyr = QgsProject.instance().mapLayersByName("dalles_MNT_1_m")[0]
+
+        csvFilePath = os.path.join(self.plugin_dir, 'loadercen_metadata.csv').replace('\\', '/')
+        uri = 'file:///' + csvFilePath + '?delimiter=;'
+
+        # Load the CSV file as a delimited text layer
+        infoLyr = QgsVectorLayer(uri, "Métadonnées_MNT_LoaderCEN", "delimitedtext")
+        QgsProject.instance().addMapLayer(infoLyr)
+
+        #headers_csv = [field.name() for field in infoLyr.fields()]
+        #headers_shp = [field.name() for field in vectorLyr.fields()]
+        #print(headers_csv[0])
+        #print(headers_shp[0])
+
+
+        # Perform the join operation
+        joinLayer = QgsVectorLayerJoinInfo()
+        joinLayer.setJoinLayerId(infoLyr.id())
+        joinLayer.setJoinFieldName('NOM_DALLE')  # Name of the join field in the CSV
+        joinLayer.setTargetFieldName('NOM_DALLE')  # Name of the join field in the target layer
+        joinLayer.setUsingMemoryCache(True)
+        joinLayer.setJoinLayer(infoLyr)
+        vectorLyr.addJoin(joinLayer)
+
+        field_name = 'Métadonnées_MNT_LoaderCEN_origine'
+        field_index = vectorLyr.fields().indexFromName(field_name)
+        unique_values = vectorLyr.uniqueValues(field_index)
+
+        category_list = []
+        for value in unique_values:
+            symbol = QgsSymbol.defaultSymbol(vectorLyr.geometryType())
+            category = QgsRendererCategory(value, symbol, str(value))
+            category_list.append(category)
+
+        renderer = QgsCategorizedSymbolRenderer(field_name, category_list)
+        renderer.updateColorRamp(QgsRandomColorRamp())
+        vectorLyr.setRenderer(renderer)
+        vectorLyr.triggerRepaint()
+
     def chargement_dalles_orthos_50cm(self):
 
         dalles_orthos_50cm = self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_50cm.geojson', 'dalles_ortho_50cm', 'ogr')
@@ -385,22 +430,22 @@ class LoaderCEN:
                     NOM_COUCHE = f.attribute(0).replace('1-0_MNT_EXT', 'FXX').split('LAMB93_IGN69', 1)[0]+'MNT_LAMB93_IGN69'  # results in Group 1
                     liste_couches.append(NOM_COUCHE)
 
-                if len(liste_couches) > 15:
-                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 15.", QMessageBox.Ok)
-                    if self.QMBquestion == QMessageBox.Ok:
-                        print("Sélectionner moins de 15 dalles à la fois")
-
-                else:
-                    for couches in liste_couches:
-                        alg_params = {
-                            'DATA': '',
-                            'METHOD': 0,  # GET
-                            'OUTPUT': self.tmpdirname + str(couches),
-                            'URL': dossier_MNT + str(couches) + '.asc'
-                        }
-                        processing.run('native:filedownloader', alg_params)
-                        iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
-                        print(couches)
+                # if len(liste_couches) > 25:
+                #     self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 25.", QMessageBox.Ok)
+                #     if self.QMBquestion == QMessageBox.Ok:
+                #         print("Sélectionner moins de 25 dalles à la fois")
+                #
+                # else:
+                for couches in liste_couches:
+                    alg_params = {
+                        'DATA': '',
+                        'METHOD': 0,  # GET
+                        'OUTPUT': self.tmpdirname + str(couches),
+                        'URL': dossier_MNT + str(couches) + '.asc'
+                    }
+                    processing.run('native:filedownloader', alg_params)
+                    iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
+                    print(couches)
         else:
             QMessageBox.question(self.iface.mainWindow(), u"Aucune couche 'dalles_MNT_1_m' détectée", u"Veuillez charger la couche 'dalles_MNT_1_m' depuis le menu 'choix des dalles' pour continuer.", QMessageBox.Ok)
 

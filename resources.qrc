@@ -8,5 +8,6 @@
 		<file>MNT.png</file>
 		<file>ortho.png</file>
 		<file>info.png</file>
+		<file>metadata.png</file>
     </qresource>
 </RCC>
