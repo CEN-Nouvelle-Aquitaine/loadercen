@@ -3,4 +3,8 @@
 Cet outil propose également le téléchargement du cadastre communal à partir du code INSEE du territoire concerné.
 
 
+## Interface du plugin:
+
+<img align="center" src=https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loaderCEN/main/loadercen.PNG  width="600"/>
+
 
