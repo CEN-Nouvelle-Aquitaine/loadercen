@@ -5,26 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="735a93ee-89d2-40ad-939d-2d9b24f650ce" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/loadercen.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/loadercen.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LoaderCEN.py" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/resources.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/resources.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/qgis_interface.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.asc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.asc.aux.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.keywords" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.lic" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.prj" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tenbytenraster.qml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_LoaderCEN_dialog.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_init.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_qgis_environment.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_resources.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_translations.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/utilities.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -119,7 +101,8 @@
       <workItem from="1679563394502" duration="1197000" />
       <workItem from="1681985368455" duration="3746000" />
       <workItem from="1681993990412" duration="9871000" />
-      <workItem from="1682005781673" duration="1180000" />
+      <workItem from="1682005781673" duration="1780000" />
+      <workItem from="1682062074385" duration="1491000" />
     </task>
     <servers />
   </component>

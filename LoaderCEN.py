@@ -337,7 +337,11 @@ class LoaderCEN:
 
         # Load the CSV file as a delimited text layer
         infoLyr = QgsVectorLayer(uri, "Métadonnées_MNT_LoaderCEN", "delimitedtext")
-        QgsProject.instance().addMapLayer(infoLyr)
+
+        if not QgsProject.instance().mapLayersByName("Métadonnées_MNT_LoaderCEN"):
+            QgsProject.instance().addMapLayer(infoLyr)
+        else:
+            infoLyr = QgsProject.instance().mapLayersByName("Métadonnées_MNT_LoaderCEN")[0]
 
         #headers_csv = [field.name() for field in infoLyr.fields()]
         #headers_shp = [field.name() for field in vectorLyr.fields()]
