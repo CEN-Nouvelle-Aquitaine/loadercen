@@ -348,7 +348,6 @@ class LoaderCEN:
         #print(headers_csv[0])
         #print(headers_shp[0])
 
-
         # Perform the join operation
         joinLayer = QgsVectorLayerJoinInfo()
         joinLayer.setJoinLayerId(infoLyr.id())
