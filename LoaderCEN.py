@@ -624,27 +624,36 @@ class LoaderCEN:
     def chargement_drone(self):
 
 
-        self.dlg.label_2.show()
-        self.dlg.label_3.show()
-        self.dlg.label_10.show()
-        self.dlg.label_12.show()
 
-        for feature in self.emprise_drone.selectedFeatures():
-            image_drone = feature['nomcouche']
+        if len(self.emprise_drone.selectedFeatures()) == 0:
+            QMessageBox.question(self.iface.mainWindow(), u"Aucune emprise drone sélectionnée",
+                                 u"Veuillez sélectionner au moins une emprise depuis QGIS avant de tenter de charger l'image drone associée !",
+                                 QMessageBox.Ok)
 
-        uri = "url=https://opendata.cen-nouvelle-aquitaine.org/geoserver/drone/wms&service=WMS+Raster&version=1.0.0&crs=EPSG:2154&format=image/png&layers=",image_drone,"&styles"
-        uri = "".join(uri)
+        else:
 
-        rlayer = QgsRasterLayer(uri, image_drone, "WMS")
-        QgsProject.instance().addMapLayer(rlayer)
+            self.dlg.label_2.show()
+            self.dlg.label_3.show()
+            self.dlg.label_10.show()
+            self.dlg.label_12.show()
 
-        iface.mapCanvas().zoomToSelected(self.emprise_drone)
+            for feature in self.emprise_drone.selectedFeatures():
+                image_drone = feature['nomcouche']
 
-        self.dlg.label_2.hide()
-        self.dlg.label_3.hide()
-        self.dlg.label_10.hide()
-        self.dlg.label_12.hide()
+                uri = "url=https://opendata.cen-nouvelle-aquitaine.org/geoserver/drone/wms&service=WMS+Raster&version=1.0.0&crs=EPSG:2154&format=image/png&layers=",image_drone,"&styles"
+                uri = "".join(uri)
 
+                rlayer = QgsRasterLayer(uri, image_drone, "WMS")
+                QgsProject.instance().addMapLayer(rlayer)
+
+            self.dlg.label_2.hide()
+            self.dlg.label_3.hide()
+            self.dlg.label_10.hide()
+            self.dlg.label_12.hide()
+
+            iface.mapCanvas().zoomToSelected(self.emprise_drone)
+
+            self.emprise_drone.removeSelection()
 
     def popup(self):
 
