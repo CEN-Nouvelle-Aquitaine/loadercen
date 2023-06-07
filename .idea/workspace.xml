@@ -7,7 +7,7 @@
     <list default="true" id="735a93ee-89d2-40ad-939d-2d9b24f650ce" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LoaderCEN.py" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metadata.txt" beforeDir="false" afterPath="$PROJECT_DIR$/metadata.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" beforeDir="false" afterPath="$PROJECT_DIR$/LoaderCEN_dialog_base.ui" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,6 +107,8 @@
       <workItem from="1682324538812" duration="142000" />
       <workItem from="1682497074107" duration="660000" />
       <workItem from="1685610233003" duration="789000" />
+      <workItem from="1685698651357" duration="4000" />
+      <workItem from="1686124596105" duration="1303000" />
     </task>
     <servers />
   </component>

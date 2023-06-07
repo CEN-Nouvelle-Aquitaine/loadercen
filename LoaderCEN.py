@@ -118,8 +118,6 @@ class LoaderCEN:
 
         self.dlg.commandLinkButton_2.clicked.connect(self.chargement_dalles_orthos_20cm)
 
-        self.dlg.commandLinkButton_3.clicked.connect(self.chargement_dalles_orthos_50cm)
-
         self.dlg.pushButton.clicked.connect(self.chargement_MNT_1m)
 
         self.dlg.pushButton_2.clicked.connect(self.orthos)
@@ -371,23 +369,6 @@ class LoaderCEN:
         vectorLyr.setRenderer(renderer)
         vectorLyr.triggerRepaint()
 
-    def chargement_dalles_orthos_50cm(self):
-
-        dalles_orthos_50cm = self.iface.addVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_ortho_50cm.geojson', 'dalles_ortho_50cm', 'ogr')
-
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "dalles_ortho_20cm":
-                QgsProject.instance().removeMapLayers([lyr.id()])
-
-        mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
-                                                'color_border': '#22222',
-                                                'width_border': '0.3'})
-
-        myRenderer = dalles_orthos_50cm.renderer()
-
-        myRenderer.setSymbol(mySymbol1)
-
-        dalles_orthos_50cm.triggerRepaint()
 
     def chargement_dalles_orthos_20cm(self):
 
