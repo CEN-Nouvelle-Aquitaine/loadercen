@@ -26,7 +26,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from PyQt5 import *
 
-from qgis.core import QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp
+from qgis.core import QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
 from qgis.gui import *
 from qgis.utils import *
 import processing
@@ -40,8 +40,8 @@ import urllib
 import tempfile
 from urllib import request, parse
 from PyQt5.QtXml import QDomDocument
-
-
+import shutil
+import platform
 
 class Popup(QWidget):
     def __init__(self, parent=None):
@@ -98,6 +98,7 @@ class LoaderCEN:
         self.dlg.label_2.setMovie(self.movie)
         self.dlg.label_10.setMovie(self.movie)
         self.dlg.label_12.setMovie(self.movie)
+        self.dlg.label_15.setMovie(self.movie)
 
         self.movie.start()
 
@@ -105,6 +106,7 @@ class LoaderCEN:
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
         self.dlg.label_12.hide()
+        self.dlg.label_15.hide()
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -130,12 +132,20 @@ class LoaderCEN:
 
         self.dlg.commandLinkButton_4.clicked.connect(self.ajout_metadata_mnt)
 
+        self.dlg.comboBox_3.currentIndexChanged.connect(self.verif_memoire_libre)
+
+        self.dlg.pushButton_5.clicked.connect(self.chargement_lidar)
+
 
         #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
         #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
 
-        dalles_dept = ["Allier", "Charente", "Charente-Maritime", "Correze", "Creuse", "Dordogne", "Gironde", "Landes", "Lot-et-Garonne", "Pyrenees-Atlantique", "Deux-Sevres", "Vienne", "Haute-Vienne"]
+        dalles_dept = ["Allier", "Charente", "Charente-Maritime", "Corrèze", "Creuse", "Deux-Sevres", "Dordogne", "Gironde", "Haute-Vienne", "Landes", "Lot-et-Garonne", "Pyrénées-Atlantiques", "Vienne"]
         self.dlg.comboBox.addItems(set(dalles_dept))
+        
+        dalles_lidar_dept = ['Charente','Charente-Maritime','Corrèze','Creuse','Dordogne','Gironde','Haute-Vienne','Landes','Lot-et-Garonne','Pyrénées-Atlantiques']
+        
+        self.dlg.comboBox_3.addItems(set(dalles_lidar_dept))
 
         self.dlg.comboBox_2.addItems(set(['16','17','19','23','24','33','40','47','64','79','86','87']))
 
@@ -160,8 +170,6 @@ class LoaderCEN:
             iface.messageBar().pushMessage("Plugin à jour", "Votre version de LoaderCEN %s est à jour !" %version_utilisateur, level=Qgis.Success, duration=5)
         else:
             iface.messageBar().pushMessage("Information :", "Une nouvelle version de LoaderCEN est disponible, veuillez mettre à jour le plugin !", level=Qgis.Info, duration=120)
-
-
 
         with tempfile.TemporaryDirectory() as self.tmpdirname:
             print('le dossier temporaire a été crée', self.tmpdirname)
@@ -332,6 +340,9 @@ class LoaderCEN:
         csvFilePath = os.path.join(self.plugin_dir, 'loadercen_metadata.csv').replace('\\', '/')
         uri = 'file:///' + csvFilePath + '?delimiter=;'
 
+        url_open = urllib.request.urlopen("https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loadercen/main/flux.csv")
+
+
         # Load the CSV file as a delimited text layer
         infoLyr = QgsVectorLayer(uri, "Métadonnées_MNT_LoaderCEN", "delimitedtext")
 
@@ -394,6 +405,7 @@ class LoaderCEN:
         self.dlg.label_3.show()
         self.dlg.label_10.show()
         self.dlg.label_12.show()
+        self.dlg.label_15.show()
 
         dossier_MNT = 'http://51.91.38.98/rgealti/'
 
@@ -413,22 +425,22 @@ class LoaderCEN:
                     NOM_COUCHE = f.attribute(0).replace('1-0_MNT_EXT', 'FXX').split('LAMB93_IGN69', 1)[0]+'MNT_LAMB93_IGN69'  # results in Group 1
                     liste_couches.append(NOM_COUCHE)
 
-                # if len(liste_couches) > 25:
-                #     self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 25.", QMessageBox.Ok)
-                #     if self.QMBquestion == QMessageBox.Ok:
-                #         print("Sélectionner moins de 25 dalles à la fois")
-                #
-                # else:
-                for couches in liste_couches:
-                    alg_params = {
-                        'DATA': '',
-                        'METHOD': 0,  # GET
-                        'OUTPUT': self.tmpdirname + str(couches),
-                        'URL': dossier_MNT + str(couches) + '.asc'
-                    }
-                    processing.run('native:filedownloader', alg_params)
-                    iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
-                    print(couches)
+                if len(liste_couches) > 25:
+                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 16.", QMessageBox.Ok)
+                    if self.QMBquestion == QMessageBox.Ok:
+                        print("Sélectionner moins de 25 dalles à la fois")
+                
+                else:
+                    for couches in liste_couches:
+                        alg_params = {
+                            'DATA': '',
+                            'METHOD': 0,  # GET
+                            'OUTPUT': self.tmpdirname + str(couches),
+                            'URL': dossier_MNT + str(couches) + '.asc'
+                        }
+                        processing.run('native:filedownloader', alg_params)
+                        iface.addRasterLayer(self.tmpdirname + str(couches), str(couches))
+                        print(couches)
         else:
             QMessageBox.question(self.iface.mainWindow(), u"Aucune couche 'dalles_MNT_1_m' détectée", u"Veuillez charger la couche 'dalles_MNT_1_m' depuis le menu 'choix des dalles' pour continuer.", QMessageBox.Ok)
 
@@ -437,6 +449,7 @@ class LoaderCEN:
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
         self.dlg.label_12.hide()
+        self.dlg.label_15.hide()
 
     def orthos(self):
 
@@ -444,6 +457,7 @@ class LoaderCEN:
         self.dlg.label_3.show()
         self.dlg.label_10.show()
         self.dlg.label_12.show()
+        self.dlg.label_15.show()
 
         liste_couches = []
 
@@ -470,7 +484,7 @@ class LoaderCEN:
                     liste_couches.append(NOM_COUCHE)
 
                 if len(liste_couches) > 4:
-                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 4.", QMessageBox.Ok)
+                    self.QMBquestion = QMessageBox.question(iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers à charger en simultané est limité à 9.", QMessageBox.Ok)
                     if self.QMBquestion == QMessageBox.Ok:
                         print("Sélectionner moins de 15 dalles à la fois")
 
@@ -496,6 +510,7 @@ class LoaderCEN:
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
         self.dlg.label_12.hide()
+        self.dlg.label_15.hide()
 
 
     def chargement_cadastre(self):
@@ -504,6 +519,7 @@ class LoaderCEN:
         self.dlg.label_3.show()
         self.dlg.label_10.show()
         self.dlg.label_12.show()
+        self.dlg.label_15.show()
 
         numero_dept = self.dlg.lineEdit.text()[:2]
 
@@ -555,6 +571,7 @@ class LoaderCEN:
         self.dlg.label_3.hide()
         self.dlg.label_10.hide()
         self.dlg.label_12.hide()
+        self.dlg.label_15.hide()
 
 
 
@@ -604,8 +621,6 @@ class LoaderCEN:
 
     def chargement_drone(self):
 
-
-
         if len(self.emprise_drone.selectedFeatures()) == 0:
             QMessageBox.question(self.iface.mainWindow(), u"Aucune emprise drone sélectionnée",
                                  u"Veuillez sélectionner au moins une emprise depuis QGIS avant de tenter de charger l'image drone associée !",
@@ -617,6 +632,7 @@ class LoaderCEN:
             self.dlg.label_3.show()
             self.dlg.label_10.show()
             self.dlg.label_12.show()
+            self.dlg.label_15.show()
 
             for feature in self.emprise_drone.selectedFeatures():
                 image_drone = feature['nomcouche']
@@ -631,10 +647,149 @@ class LoaderCEN:
             self.dlg.label_3.hide()
             self.dlg.label_10.hide()
             self.dlg.label_12.hide()
+            self.dlg.label_15.hide()
 
             iface.mapCanvas().zoomToSelected(self.emprise_drone)
 
             self.emprise_drone.removeSelection()
+
+
+    def verif_memoire_libre(self):
+
+        if platform.system() == "Windows":
+            chemin_disque = "C:/"
+
+            # statistiques mémoire sur disque C:
+            stat = shutil.disk_usage(chemin_disque)
+
+            # Conversion en gigabytes pour une meilleure lisibilité
+            # total_gb_windows = stat.total / (1024 ** 3)
+            # used_gb_windows = stat.used / (1024 ** 3)
+            free_gb_windows = stat.free / (1024 ** 3)
+            
+            if free_gb_windows < 5:
+                QMessageBox.question(
+                    self.iface.mainWindow(),
+                    u"Espace disque libre faible",
+                    u"Vous avez moins de 5Go de libres sur votre disque dur, veuillez libérer de l'espace disque pour pouvoir charger les données Lidar depuis LoaderCEN !",
+                    QMessageBox.Ok
+                )
+
+                return
+            
+                # print("Disk usage statistics:")
+                # print(f'Espace total: {total_gb_windows:.2f} Go')
+                # print(f'Espace utilisé: {used_gb_windows:.2f} Gp')
+                # print(f'Espace libre: {free_gb_windows:.2f} Go')
+
+            else:
+                self.chargement_dalles_lidar()
+
+        else:
+            total, used, free = shutil.disk_usage("/")
+            free_gb_linux = free // (2**30)
+            
+            if free_gb_linux < 5:
+                QMessageBox.question(
+                    self.iface.mainWindow(),
+                    u"Espace disque libre faible",
+                    u"Vous avez moins de 5Go de libres sur votre disque dur, veuillez libérer de l'espace disque pour pouvoir charger les données Lidar depuis LoaderCEN !",
+                    QMessageBox.Ok
+                )
+                return
+            else:
+                self.chargement_dalles_lidar()
+
+
+
+    def chargement_dalles_lidar(self):
+
+        if self.dlg.comboBox_3.currentText() == "Choix du département":
+            QMessageBox.question(self.iface.mainWindow(), u"Choix du département", u"Veuillez sélectionner un département afin de charger le dallage Lidar associé !", QMessageBox.Ok)
+
+        else:
+            for lyr in QgsProject.instance().mapLayers().values():
+
+                if lyr.name() == "Dalles Lidar":
+                    QgsProject.instance().removeMapLayers([lyr.id()])
+
+        # Create a vector layer from the GeoJSON file
+        dalles_lidar = QgsVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_lidar.geojson', 'Dalles Lidar', 'ogr')
+
+        # Check if the layer was loaded successfully
+        if not dalles_lidar.isValid():
+            print('Layer failed to load!')
+
+        dalles_lidar.setSubsetString('nom_dep=\'' + self.dlg.comboBox_3.currentText() + '\'')
+
+        # Add the layer to the map
+        QgsProject.instance().addMapLayer(dalles_lidar)
+
+
+        mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
+                                                'color_border': '#22222',
+                                                'width_border': '0.3'})
+
+        myRenderer = dalles_lidar.renderer()
+
+        myRenderer.setSymbol(mySymbol1)
+
+        dalles_lidar.triggerRepaint()
+
+        ex = dalles_lidar.extent()
+        iface.mapCanvas().setExtent(ex)
+
+    def chargement_lidar(self):
+
+        self.dalles_lidar = QgsProject.instance().mapLayersByName('Dalles Lidar')[0]
+
+
+        if len(self.dalles_lidar.selectedFeatures()) == 0:
+            QMessageBox.question(self.iface.mainWindow(), u"Aucune emprise drone sélectionnée", u"Veuillez sélectionner au moins une dalle Lidar depuis QGIS avant de tenter de charger les données associées !", QMessageBox.Ok)
+            return
+        elif self.dalles_lidar.selectedFeatureCount() > 4:
+            self.QMBquestion = QMessageBox.question(self.iface.mainWindow(), u"Attention", "Pour des soucis de performances, le nombre de fichiers Lidar à charger en simultané est limité à 4.", QMessageBox.Ok)
+            return
+        else:
+
+            self.dlg.label_2.show()
+            self.dlg.label_3.show()
+            self.dlg.label_10.show()
+            self.dlg.label_12.show()
+            self.dlg.label_15.show()
+
+            self.dalles_lidar = QgsProject.instance().mapLayersByName('Dalles Lidar')[0]
+
+            selected_dalles_lidar = self.dalles_lidar.selectedFeatures()
+
+            if selected_dalles_lidar:
+
+                for feature in selected_dalles_lidar:
+                    nom_dalle = feature.attributes()[0]
+                    url_dalle = feature.attributes()[1]
+                    print("Nom de la dalle:", nom_dalle)
+                    print("Url de la dalle:", url_dalle)
+
+                    # Create a QgsPointCloudLayer instance (native LAS provider)
+                    point_cloud_layer = QgsPointCloudLayer(uri=url_dalle, baseName=nom_dalle, providerLib="copc")
+
+                    # Add the point cloud layer to the map
+                    QgsProject.instance().addMapLayer(point_cloud_layer)
+            else:
+                print("No features selected.")
+
+
+
+            self.dlg.label_2.hide()
+            self.dlg.label_3.hide()
+            self.dlg.label_10.hide()
+            self.dlg.label_12.hide()
+            self.dlg.label_15.hide()
+
+            iface.mapCanvas().zoomToSelected(point_cloud_layer)
+
+            self.dalles_lidar.removeSelection()
+
 
     def popup(self):
 
