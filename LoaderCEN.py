@@ -21,12 +21,12 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from PyQt5 import *
 
-from qgis.core import QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
+from qgis.core import QgsCoordinateTransform, QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
 from qgis.gui import *
 from qgis.utils import *
 import processing
@@ -42,6 +42,21 @@ from urllib import request, parse
 from PyQt5.QtXml import QDomDocument
 import shutil
 import platform
+import socket
+
+
+
+# Vérifier la connexion à internet
+try:
+    # Vérifier si l'utilisateur est connecté à internet en ouvrant une connexion avec un site web
+    host = socket.gethostbyname("www.google.com")
+    s = socket.create_connection((host, 80), 2)
+    s.close()
+except socket.error:
+    # Afficher un message si l'utilisateur n'est pas connecté à internet
+    QMessageBox.warning(None, 'Avertissement',
+                        'Vous n\'êtes actuellement pas connecté à internet. Veuillez vous connecter pour pouvoir utiliser LoaderCEN !')
+
 
 class Popup(QWidget):
     def __init__(self, parent=None):
@@ -117,7 +132,6 @@ class LoaderCEN:
 
         self.dlg.commandLinkButton.clicked.connect(self.popup)
 
-
         self.dlg.commandLinkButton_2.clicked.connect(self.chargement_dalles_orthos_20cm)
 
         self.dlg.pushButton.clicked.connect(self.chargement_MNT_1m)
@@ -137,6 +151,8 @@ class LoaderCEN:
         self.dlg.pushButton_5.clicked.connect(self.chargement_lidar)
 
 
+        self.dlg.lineEdit.textChanged.connect(self.autocompletion_communes)
+
         #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
         #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
 
@@ -155,14 +171,6 @@ class LoaderCEN:
         derniere_version = urllib.request.urlopen("https://sig.dsi-cen.org/qgis/downloads/last_version_loadercen.txt")
         num_last_version = derniere_version.readlines()[0].decode("utf-8")
 
-        # print(":"+num_last_version+":")
-        # print(":"+infos_metadonnees[8]+":")
-        #
-        # print(type(num_last_version))
-        # print(type(infos_metadonnees[8]))
-        #
-        # print(len(num_last_version))
-        # print(len(infos_metadonnees[8]))
 
         version_utilisateur = infos_metadonnees[8].splitlines()
 
@@ -513,6 +521,28 @@ class LoaderCEN:
         self.dlg.label_15.hide()
 
 
+    def autocompletion_communes(self):
+
+        cadastre = QgsProject.instance().mapLayersByName("test")[0]
+
+        # Retrieve unique values from the first field of the layer "cadastre"
+        unique_values = set([feature.attribute(0) for feature in cadastre.getFeatures()])
+
+        # Create a list of unique values for autocompletion
+        communesList = list(unique_values)
+        
+        # Create a QCompleter with the word list and set its case sensitivity
+        completer = QCompleter(communesList)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+
+        # Set the completer to automatically complete the text in the lineEdit or remove this line to show the different matching options below the lineEdit
+        completer.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
+        completer.setMaxVisibleItems(10)
+
+        # Set the completer to the lineEdit
+        self.dlg.lineEdit.setCompleter(completer)
+
+
     def chargement_cadastre(self):
 
         self.dlg.label_2.show()
@@ -533,14 +563,11 @@ class LoaderCEN:
         nom_couche = "parcelles_cadastrales_commune_" + self.dlg.lineEdit.text()
 
         cadastre.setName(nom_couche)
-        print(cadastre.extent())
+        # print(cadastre.extent())
         # Find out if we need to transform coordinates
         proj = QgsProject.instance()
         if cadastre.crs().authid() != proj.crs().authid():
-            print("La couche 'cadastre' et le projet QGIS ne partagent pas le même CRS",
-                  cadastre.crs().authid(),
-                  proj.crs().authid()
-                  )
+            print("La couche 'cadastre' et le projet QGIS ne partagent pas le même CRS", cadastre.crs().authid(), proj.crs().authid())
             tr = QgsCoordinateTransform(cadastre.crs(), proj.crs(), proj)
             ex = tr.transform(cadastre.extent())
 
@@ -552,7 +579,7 @@ class LoaderCEN:
 
         iface.mapCanvas().refresh()
 
-        # if cadastre.featureCount() == 0:
+        # # if cadastre.featureCount() == 0:
         #     print(cadastre.featureCount())
         #     QMessageBox.question(self.iface.mainWindow(), u"Couche vide", u"Code Insee inconnu ! ", QMessageBox.Ok)
 
@@ -699,7 +726,6 @@ class LoaderCEN:
                 return
             else:
                 self.chargement_dalles_lidar()
-
 
 
     def chargement_dalles_lidar(self):
