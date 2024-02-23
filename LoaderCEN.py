@@ -26,7 +26,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from PyQt5 import *
 
-from qgis.core import QgsCoordinateTransform, QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
+from qgis.core import QgsFeatureRequest, QgsCoordinateTransform, QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
 from qgis.gui import *
 from qgis.utils import *
 import processing
@@ -43,7 +43,8 @@ from PyQt5.QtXml import QDomDocument
 import shutil
 import platform
 import socket
-
+import re
+import time
 
 
 # Vérifier la connexion à internet
@@ -151,7 +152,7 @@ class LoaderCEN:
         self.dlg.pushButton_5.clicked.connect(self.chargement_lidar)
 
 
-        self.dlg.lineEdit.textChanged.connect(self.autocompletion_communes)
+        self.autocompletion_communes()
 
         #dossier_dalles = 'https://sig.dsi-cen.org/qgis/downloads/dalles_mnt_1m/'
         #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
@@ -348,7 +349,7 @@ class LoaderCEN:
         csvFilePath = os.path.join(self.plugin_dir, 'loadercen_metadata.csv').replace('\\', '/')
         uri = 'file:///' + csvFilePath + '?delimiter=;'
 
-        url_open = urllib.request.urlopen("https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loadercen/main/flux.csv")
+        url_open = urllib.request.urlopen("https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loadercen/main/loadercen_metadata.csv")
 
 
         # Load the CSV file as a delimited text layer
@@ -522,25 +523,54 @@ class LoaderCEN:
 
 
     def autocompletion_communes(self):
+        wfs_url = "https://opendata.cen-nouvelle-aquitaine.org/administratif/wfs"
+        layer_type = "administratif:cheflieu"
 
-        cadastre = QgsProject.instance().mapLayersByName("test")[0]
+        # Start measuring time for layer loading
+        start_time = time.time()
 
-        # Retrieve unique values from the first field of the layer "cadastre"
-        unique_values = set([feature.attribute(0) for feature in cadastre.getFeatures()])
+        # Connexion au service WFS
+        uri = f"{wfs_url}?VERSION=1.0.0&TYPENAME={layer_type}&request=GetFeature"
+        layer = QgsVectorLayer(uri, "Chef Lieu", "WFS")
 
-        # Create a list of unique values for autocompletion
-        communesList = list(unique_values)
-        
+        # Calculate time taken for layer loading
+        load_time = time.time() - start_time
+
+        if not layer.isValid():
+            print("Problème avec la couche")
+        else:
+            print("Couche bien chargée")
+
+        # Start measuring time for concatenating fields and storing them into the list
+        start_time = time.time()
+
+        communesList = set()  # Utilisation de set pour stocker les valeurs uniques
+
+        for feature in layer.getFeatures():
+            field2_value = feature.attributes()[2]
+            field3_value = feature.attributes()[3]
+            concatenated_value = f"{field3_value} ({field2_value})"
+            communesList.add(concatenated_value)
+
+        # Calculate time taken for concatenation and storing into the list
+        concat_time = time.time() - start_time
+
+        # Output time taken
+        print(f"Temps de chargement de la couche : {load_time} secondes")
+        print(f"Temps de concaténation et de stockage dans la liste : {concat_time} secondes")
+
         # Create a QCompleter with the word list and set its case sensitivity
         completer = QCompleter(communesList)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
 
         # Set the completer to automatically complete the text in the lineEdit or remove this line to show the different matching options below the lineEdit
-        completer.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
+        completer.setCompletionMode(QCompleter.PopupCompletion)
         completer.setMaxVisibleItems(10)
 
         # Set the completer to the lineEdit
         self.dlg.lineEdit.setCompleter(completer)
+
 
 
     def chargement_cadastre(self):
@@ -551,10 +581,27 @@ class LoaderCEN:
         self.dlg.label_12.show()
         self.dlg.label_15.show()
 
-        numero_dept = self.dlg.lineEdit.text()[:2]
+        # Use search() to find the first match of the pattern
+        numero_dept_match = re.search(r'\((\d{2})\d*\)', self.dlg.lineEdit.completer().currentCompletion())
 
-        uri = "https://opendata.cen-nouvelle-aquitaine.org/administratif/wfs?VERSION=1.0.0&TYPENAME=administratif:parcelle_", numero_dept, "&SRSNAME=EPSG:4326&request=GetFeature&cql_filter=commune='", self.dlg.lineEdit.text(), "'"
+        if numero_dept_match:
+            numero_dept = numero_dept_match.group(1)
+            print(numero_dept)
+        else:
+            print("Le numéro de departement n'existe pas dans la liste.")
+
+        selected_commune_match = re.search(r'\((.*?)\)', self.dlg.lineEdit.completer().currentCompletion())
+
+        if selected_commune_match:
+            selected_commune = selected_commune_match.group(1)
+            print(selected_commune)
+        else:
+            print("La commune sélectionnée n'existe pas dans la liste.")
+
+        uri = "https://opendata.cen-nouvelle-aquitaine.org/administratif/wfs?VERSION=1.0.0&TYPENAME=administratif:parcelle_", numero_dept, "&SRSNAME=EPSG:4326&request=GetFeature&cql_filter=commune='", selected_commune, "'"
         uri = "".join(uri)
+
+        print(uri)
 
         cadastre = QgsVectorLayer(uri, self.dlg.lineEdit.text(), "WFS")
 
