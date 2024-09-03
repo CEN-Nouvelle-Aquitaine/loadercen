@@ -6,7 +6,7 @@
 name=LoaderCEN
 qgisMinimumVersion=3.0
 description=Téléchargement du MNT 1 mètre et/ou des orthophotos 50cm/20cm à partir d'un dallage dans QGIS. 
-version=3.1
+version=3.2
 author=Romain Montillet
 email=r.montillet@cen-na.org
 

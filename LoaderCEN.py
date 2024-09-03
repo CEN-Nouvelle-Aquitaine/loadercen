@@ -544,13 +544,12 @@ class LoaderCEN:
         # Start measuring time for concatenating fields and storing them into the list
         start_time = time.time()
 
-        communesList = set()  # Utilisation de set pour stocker les valeurs uniques
+        communesList = []  # Utilisation de liste pour stocker les valeurs uniques
 
         for feature in layer.getFeatures():
             field2_value = feature.attributes()[2]
             field3_value = feature.attributes()[3]
-            concatenated_value = f"{field3_value} ({field2_value})"
-            communesList.add(concatenated_value)
+            communesList.append((field3_value, field2_value))  # Append a tuple of (commune, INSEE code)
 
         # Calculate time taken for concatenation and storing into the list
         concat_time = time.time() - start_time
@@ -559,12 +558,13 @@ class LoaderCEN:
         print(f"Temps de chargement de la couche : {load_time} secondes")
         print(f"Temps de concaténation et de stockage dans la liste : {concat_time} secondes")
 
-        # Create a QCompleter with the word list and set its case sensitivity
-        completer = QCompleter(communesList)
+        # Create a list of communes for the QCompleter
+        commune_names = [f"{commune} ({insee})" for commune, insee in communesList]
+
+        # Create a QCompleter with the list of commune names
+        completer = QCompleter(commune_names)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
         completer.setFilterMode(Qt.MatchContains)
-
-        # Set the completer to automatically complete the text in the lineEdit or remove this line to show the different matching options below the lineEdit
         completer.setCompletionMode(QCompleter.PopupCompletion)
         completer.setMaxVisibleItems(10)
 
