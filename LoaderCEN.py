@@ -22,13 +22,17 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from PyQt5 import *
+from qgis.PyQt.QtGui import QMovie, QIcon, QFont, QDesktopServices
+from qgis.PyQt.QtWidgets import QWidget, QCompleter, QAction, QMessageBox, QTextBrowser
+from qgis.utils import iface
 
-from qgis.core import QgsFeatureRequest, QgsCoordinateTransform, QgsApplication, QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer, QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
-from qgis.gui import *
-from qgis.utils import *
+from qgis.core import (
+    Qgis, QgsCoordinateTransform, QgsApplication,
+    QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer,
+    QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory,
+    QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
+)
+
 import processing
 from pathlib import Path
 # Initialize Qt resources from file resources.py
@@ -72,8 +76,8 @@ class Popup(QWidget):
         fp.close()
 
         self.text_edit.setHtml(html_changelog)
-        self.text_edit.setFont(QtGui.QFont("Calibri",weight=QtGui.QFont.Bold))
-        self.text_edit.anchorClicked.connect(QtGui.QDesktopServices.openUrl)
+        self.text_edit.setFont(QFont("Calibri",weight=QFont.Bold))
+        self.text_edit.anchorClicked.connect(QDesktopServices.openUrl)
         self.text_edit.setOpenLinks(False)
 
         self.text_edit.setWindowTitle("Nouveautés")
@@ -563,7 +567,7 @@ class LoaderCEN:
 
         # Create a QCompleter with the list of commune names
         completer = QCompleter(commune_names)
-        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setCaseSensitivity(0)
         completer.setFilterMode(Qt.MatchContains)
         completer.setCompletionMode(QCompleter.PopupCompletion)
         completer.setMaxVisibleItems(10)
