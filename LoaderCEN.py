@@ -220,7 +220,7 @@ class LoaderCEN:
         """
         # Créer un QDialog (fenêtre personnalisée)
         dialog = QDialog()
-        dialog.setWindowTitle("Nouvelle version: LoaderCEN 3.5 !")
+        dialog.setWindowTitle("Nouvelle version: LoaderCEN 3.6 !")
 
         # Créer un layout
         layout = QVBoxLayout()
