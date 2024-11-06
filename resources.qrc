@@ -1,13 +1,14 @@
 <RCC>
     <qresource prefix="/plugins/LoaderCEN" >
-	     <file>logo.jpg</file>
-        <file>icon.png</file>
-		<file>arrow.png</file>
-		<file>arrow2.png</file>
-		<file>loading.gif</file>
-		<file>MNT.png</file>
-		<file>ortho.png</file>
-		<file>info.png</file>
-		<file>metadata.png</file>
+	    <file>icons/logo.jpg</file>
+        <file>icons/icon.png</file>
+		<file>icons/arrow.png</file>
+		<file>icons/arrow2.png</file>
+		<file>icons/loading.gif</file>
+		<file>icons/MNT.png</file>
+		<file>icons/ortho.png</file>
+		<file>icons/parametres.png</file>
+		<file>icons/metadata.png</file>
+		<file>icons/info.png</file>
     </qresource>
 </RCC>

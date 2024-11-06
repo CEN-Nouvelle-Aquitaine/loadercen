@@ -21,16 +21,18 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
-from qgis.PyQt.QtGui import QMovie, QIcon, QFont, QDesktopServices
-from qgis.PyQt.QtWidgets import QWidget, QCompleter, QAction, QMessageBox, QTextBrowser
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QTimer
+from qgis.PyQt.QtGui import QMovie, QIcon, QFont, QPixmap
+from qgis.PyQt.QtWidgets import QPushButton, QCompleter, QAction, QMessageBox, QVBoxLayout, QListWidget, QDialog, QLabel
+from PyQt5.QtXml import QDomDocument
 from qgis.utils import iface
 
 from qgis.core import (
     Qgis, QgsCoordinateTransform, QgsApplication,
     QgsVectorLayerJoinInfo, QgsRasterLayer, QgsVectorLayer,
     QgsProject, QgsFillSymbol, QgsSymbol, QgsRendererCategory,
-    QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer
+    QgsCategorizedSymbolRenderer, QgsRandomColorRamp, QgsPointCloudLayer,
+    QgsDataSourceUri
 )
 
 import processing
@@ -43,13 +45,12 @@ import os.path
 import urllib
 import tempfile
 from urllib import request, parse
-from PyQt5.QtXml import QDomDocument
 import shutil
 import platform
 import socket
 import re
 import time
-
+import yaml
 
 # Vérifier la connexion à internet
 try:
@@ -63,25 +64,43 @@ except socket.error:
                         'Vous n\'êtes actuellement pas connecté à internet. Veuillez vous connecter pour pouvoir utiliser LoaderCEN !')
 
 
-class Popup(QWidget):
-    def __init__(self, parent=None):
-        super(Popup, self).__init__(parent)
 
-        self.plugin_dir = os.path.dirname(__file__)
+class AuthSelectionDialog(QDialog):
+    def __init__(self, auth_configs, parent=None):
+        super(AuthSelectionDialog, self).__init__(parent)
+        self.selected_auth_id = None
+        self.auth_config_dict = {}  # Dictionnaire pour stocker l'association entre nom et ID
+        
+        self.setWindowTitle("Sélectionner une configuration d'authentification")
 
-        self.text_edit = QTextBrowser()
-        fp = urllib.request.urlopen("https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/loaderCEN/main/info_changelog.html")
-        mybytes = fp.read()
-        html_changelog = mybytes.decode("utf8")
-        fp.close()
+        layout = QVBoxLayout()
 
-        self.text_edit.setHtml(html_changelog)
-        self.text_edit.setFont(QFont("Calibri",weight=QFont.Bold))
-        self.text_edit.anchorClicked.connect(QDesktopServices.openUrl)
-        self.text_edit.setOpenLinks(False)
+        # List to display available authentication configurations
+        self.list_widget = QListWidget(self)
+        for auth_id, auth_config in auth_configs.items():
+            auth_name = auth_config.name()  # Obtenir le nom de la configuration
+            self.list_widget.addItem(auth_name)
+            self.auth_config_dict[auth_name] = auth_id  # Associer le nom à l'ID
 
-        self.text_edit.setWindowTitle("Nouveautés")
-        self.text_edit.setMinimumSize(600,300)
+        layout.addWidget(self.list_widget)
+
+        # OK button
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept_selection)
+        layout.addWidget(ok_button)
+
+        self.setLayout(layout)
+
+    def accept_selection(self):
+        # Get the selected item from the list
+        selected_item = self.list_widget.currentItem()
+        if selected_item:
+            selected_name = selected_item.text()
+            # Récupérer l'ID associé au nom sélectionné
+            self.selected_auth_id = self.auth_config_dict.get(selected_name)
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Sélection requise", "Veuillez sélectionner une configuration d'authentification.")
 
 class LoaderCEN:
     """QGIS Plugin Implementation."""
@@ -135,7 +154,7 @@ class LoaderCEN:
 
         self.dlg.comboBox.currentIndexChanged.connect(self.chargement_dalles_MNT)
 
-        self.dlg.commandLinkButton.clicked.connect(self.popup)
+        self.dlg.commandLinkButton.clicked.connect(self.choose_default_authentication)
 
         self.dlg.commandLinkButton_2.clicked.connect(self.chargement_dalles_orthos_20cm)
 
@@ -155,6 +174,7 @@ class LoaderCEN:
 
         self.dlg.pushButton_5.clicked.connect(self.chargement_lidar)
 
+        self.dlg.commandLinkButton_3.clicked.connect(self.show_welcome_popup)
 
         self.autocompletion_communes()
 
@@ -162,13 +182,13 @@ class LoaderCEN:
         #dalles_dept = [fname for fname in os.listdir(dossier_dalles) if fname.endswith('.geojson')]
 
         dalles_dept = ["Allier", "Charente", "Charente-Maritime", "Corrèze", "Creuse", "Deux-Sevres", "Dordogne", "Gironde", "Haute-Vienne", "Landes", "Lot-et-Garonne", "Pyrénées-Atlantiques", "Vienne"]
-        self.dlg.comboBox.addItems(set(dalles_dept))
+        self.dlg.comboBox.addItems(sorted(dalles_dept))
         
         dalles_lidar_dept = ['Charente','Charente-Maritime','Corrèze','Creuse','Dordogne','Gironde','Haute-Vienne','Landes','Lot-et-Garonne','Pyrénées-Atlantiques']
         
-        self.dlg.comboBox_3.addItems(set(dalles_lidar_dept))
+        self.dlg.comboBox_3.addItems(sorted(dalles_lidar_dept))
 
-        self.dlg.comboBox_2.addItems(set(['16','17','19','23','24','33','40','47','64','79','86','87']))
+        self.dlg.comboBox_2.addItems(sorted(['16','17','19','23','24','33','40','47','64','79','86','87']))
 
         metadonnees_plugin = open(self.plugin_dir + '/metadata.txt')
         infos_metadonnees = metadonnees_plugin.readlines()
@@ -186,6 +206,114 @@ class LoaderCEN:
 
         with tempfile.TemporaryDirectory() as self.tmpdirname:
             print('le dossier temporaire a été crée', self.tmpdirname)
+
+    def closeEvent(self, event):
+        # Appelle ta fonction lors de la fermeture
+        print("test")
+        # Accepte l'événement de fermeture pour fermer la fenêtre
+        
+        event.accept()
+
+    def show_welcome_popup(self):
+        """
+        Affiche une fenêtre avec une image au démarrage, centre l'image et ajoute un texte en dessous.
+        """
+        # Créer un QDialog (fenêtre personnalisée)
+        dialog = QDialog()
+        dialog.setWindowTitle("Nouvelle version: LoaderCEN 3.5 !")
+
+        # Créer un layout
+        layout = QVBoxLayout()
+
+        # Ajouter une image (remplace 'maj_4.5.JPG' par le chemin de ton image)
+        label_image = QLabel()
+        pixmap = QPixmap(self.plugin_path + "/html/images/logo_loadercen2.JPG")  
+
+        # Vérifier si l'image existe et est chargée
+        if not pixmap.isNull():
+            # Redimensionner l'image à une taille raisonnable si nécessaire
+            pixmap = pixmap.scaled(600, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            label_image.setPixmap(pixmap)
+            label_image.setAlignment(Qt.AlignCenter)  # Centre l'image
+        else:
+            label_image.setText("Image introuvable")
+            label_image.setAlignment(Qt.AlignCenter)
+
+        # Ajouter le label avec l'image au layout
+        layout.addWidget(label_image)
+
+        # Créer un QLabel pour afficher le changelog en HTML
+        changelog_label = QLabel()
+        changelog_label.setWordWrap(True)  # Permet le retour à la ligne automatique
+
+        try:
+            # Charger le contenu du changelog depuis l'URL
+            _, info_changelog = self.load_urls('config/yaml/links.yaml')
+            fp = urllib.request.urlopen(info_changelog)
+            mybytes = fp.read()
+            html_changelog = mybytes.decode("utf8")
+            fp.close()
+
+            # Afficher le texte HTML dans le QLabel
+            changelog_label.setText(html_changelog)
+            changelog_label.setFont(QFont("Calibri", weight=QFont.Bold))
+
+        except Exception as e:
+            changelog_label.setText(f"Erreur lors du chargement du changelog : {e}")
+
+        # Ajouter le QLabel au layout
+        layout.addWidget(changelog_label)
+
+        # Ajouter un bouton de fermeture
+        button = QPushButton("Fermer")
+        button.clicked.connect(dialog.accept)
+        layout.addWidget(button)
+
+        # Centrer le bouton
+        layout.setAlignment(button, Qt.AlignCenter)
+
+        # Appliquer le layout à la fenêtre
+        dialog.setLayout(layout)
+
+        # Définir la taille minimum du dialog pour s'adapter à l'image et au texte
+        dialog.setMinimumSize(620, 500)  # Ajuste la taille pour correspondre à l'image, texte et bouton
+
+        # Afficher la fenêtre
+        dialog.exec_()
+
+
+
+    def is_first_run_of_new_version(self):
+        """
+        Vérifie si c'est la première fois que cette version du plugin est démarrée en utilisant la version
+        du plugin stockée dans 'metadata.txt' et la dernière version disponible en ligne.
+        """
+        settings = QSettings()
+
+        # Obtenir la version actuelle du plugin depuis le fichier 'metadata.txt'
+        metadonnees_plugin = open(self.plugin_path + '/metadata.txt')
+        infos_metadonnees = metadonnees_plugin.readlines()
+        version_utilisateur = infos_metadonnees[8].strip()  # Version actuelle du plugin (par exemple, '4.5.1')
+
+        # Charger la dernière version depuis l'URL
+        try:
+            last_version_url, _ = self.load_urls('config/yaml/links.yaml')
+            derniere_version = urllib.request.urlopen(last_version_url)
+            num_last_version = derniere_version.readlines()[0].decode("utf-8").strip()  # Récupérer la dernière version disponible
+        except Exception as e:
+            self.iface.messageBar().pushMessage("Error", f"Failed to load URLs: {e}", level=Qgis.Critical, duration=5)
+            return False
+
+        # Obtenir la dernière version utilisée stockée dans les paramètres
+        last_version = settings.value("LoaderCEN/last_version", "", type=str)
+
+        # Comparer la version actuelle avec la dernière version utilisée
+        if last_version != version_utilisateur or version_utilisateur != num_last_version:
+            # Si la version a changé, c'est un premier démarrage de cette version
+            settings.setValue("LoaderCEN/last_version", version_utilisateur)  # Mettre à jour la version stockée
+            return True
+
+        return False
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -279,16 +407,45 @@ class LoaderCEN:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
+        # Vérifier si c'est le premier démarrage de cette version
+        if self.is_first_run_of_new_version():
+            self.show_welcome_popup()
+
         icon_path = ':/plugins/LoaderCEN/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'LoaderCEN'),
             callback=self.run,
             parent=self.iface.mainWindow())
+        
+        # Appeler la fonction pour informer l'utilisateur s'il a plus d'une configuration d'authentification
+        self.check_authentication_configs()
 
         # will be set False in run()
         self.first_start = True
 
+
+    def check_authentication_configs(self):
+        """Vérifie le nombre de configurations d'authentification disponibles et affiche un message si nécessaire."""
+
+        managerAU = QgsApplication.authManager()
+        auth_configs = managerAU.availableAuthMethodConfigs()  # Récupérer toutes les configurations disponibles
+
+        # Vérifier si une authentification par défaut a été définie et l'appliquer
+        settings = QSettings()
+        default_auth_id = settings.value("LoaderCEN/default_auth_id", None)
+        
+        if default_auth_id:
+            self.apply_authentication_if_needed(QgsDataSourceUri())  
+
+        elif len(auth_configs) > 1:
+            # Si plusieurs configurations sont disponibles et aucune par défaut n'est définie
+            QMessageBox.information(
+                self.iface.mainWindow(),
+                "Choix de la configuration d'authentification",
+                "<center>Vous avez plusieurs configurations d'authentification disponibles.</center><br> Veuillez vous assurer de choisir la bonne configuration pour utiliser LoaderCEN.<br>"
+                "Vous pouvez définir votre configuration par défault en cliquant sur l'icone en forme de 🛠️ en bas à droite de la fenêtre du plugin."
+            )
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -316,6 +473,76 @@ class LoaderCEN:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+    def load_urls(self, yaml_file):
+        # Charger le fichier YAML contenant plusieurs clés
+        config_path = os.path.join(self.plugin_path, yaml_file)
+        
+        # Lire le fichier YAML
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+        
+        # Extraire les URL pour chaque clé
+        github_urls = config.get('github_urls', {})
+        depot_plugins_url = config.get('depot_plugins_url', {})
+
+        # Accéder aux sous-clés spécifiques
+        info_changelog = github_urls.get('info_changelog')
+        last_version_url = depot_plugins_url.get('last_version')
+
+        return last_version_url, info_changelog
+
+    def choose_default_authentication(self):
+        managerAU = QgsApplication.authManager()
+        auth_configs = managerAU.availableAuthMethodConfigs()  # Récupérer toutes les configurations disponibles
+
+        if not auth_configs:
+            QMessageBox.warning(self.dlg, "Pas de configurations", "Aucune configuration d'authentification disponible.")
+            return
+
+        dialog = AuthSelectionDialog(auth_configs)
+        if dialog.exec_() == QDialog.Accepted:
+            selected_auth_id = dialog.selected_auth_id
+            # Enregistrer la configuration par défaut dans QSettings
+            settings = QSettings()
+            settings.setValue("LoaderCEN/default_auth_id", selected_auth_id)
+            QMessageBox.information(self.dlg, "Configuration sauvegardée", "La configuration d'authentification par défaut a été définie.")
+
+    
+    def apply_authentication_if_needed(self, uri):
+        """
+        Applique une configuration d'authentification si nécessaire.
+        Charge automatiquement la configuration par défaut si elle est enregistrée dans QSettings.
+        """
+        settings = QSettings()
+        default_auth_id = settings.value("LoaderCEN/default_auth_id", None)
+
+        # Si une configuration par défaut existe, on l'applique automatiquement
+        if default_auth_id:
+            uri.setAuthConfigId(default_auth_id)
+            return True
+
+        # Si aucune configuration par défaut n'est définie, ouvrir la boîte de dialogue
+        managerAU = QgsApplication.authManager()
+        auth_configs = managerAU.availableAuthMethodConfigs()  # Récupérer toutes les configurations disponibles
+
+        if len(auth_configs) == 1:
+            # Si une seule configuration est disponible, on l'applique directement
+            auth_id = list(auth_configs.keys())[0]
+            uri.setAuthConfigId(auth_id)
+            return True
+        elif len(auth_configs) > 1:
+            # Si plusieurs configurations sont disponibles, on invite l'utilisateur à en choisir une
+            dialog = AuthSelectionDialog(auth_configs)
+            result = dialog.exec_()
+            if result == QDialog.Accepted and dialog.selected_auth_id:
+                uri.setAuthConfigId(dialog.selected_auth_id)
+                return True
+        else:
+            QMessageBox.warning(iface.mainWindow(), "Attention", "Aucune configuration d'authentification n'a été trouvée dans votre QGIS. Veuillez ajouter la configuration d'authentification CEN-NA pour charger les flux sécurisés tels que la MFU .")
+            
+
+
 
     def chargement_dalles_MNT(self):
 
@@ -575,9 +802,14 @@ class LoaderCEN:
         # Set the completer to the lineEdit
         self.dlg.lineEdit.setCompleter(completer)
 
+        completer.activated.connect(self.set_commune_from_completer)
 
+    def set_commune_from_completer(self, text):
+        self.dlg.lineEdit.setText(text)
 
     def chargement_cadastre(self):
+
+        text = self.dlg.lineEdit.text()
 
         self.dlg.label_2.show()
         self.dlg.label_3.show()
@@ -585,20 +817,24 @@ class LoaderCEN:
         self.dlg.label_12.show()
         self.dlg.label_15.show()
 
-        # Use search() to find the first match of the pattern
-        numero_dept_match = re.search(r'\((\d{2})\d*\)', self.dlg.lineEdit.completer().currentCompletion())
+        print(f"Complétion sélectionnée : {text}")
 
+        # Use search() to find the first match of the pattern
+        numero_dept_match = re.search(r'\((\d{2})\d*\)', text)
+        print(f"Complétion sélectionnée 1: {numero_dept_match}")
         if numero_dept_match:
             numero_dept = numero_dept_match.group(1)
             print(numero_dept)
         else:
             print("Le numéro de departement n'existe pas dans la liste.")
 
-        selected_commune_match = re.search(r'\((.*?)\)', self.dlg.lineEdit.completer().currentCompletion())
+        selected_commune_match = re.search(r'\((.*?)\)', text)
+        print(f"Complétion sélectionnée 2: {selected_commune_match}")
 
         if selected_commune_match:
             selected_commune = selected_commune_match.group(1)
             print(selected_commune)
+        
         else:
             print("La commune sélectionnée n'existe pas dans la liste.")
 
@@ -654,50 +890,60 @@ class LoaderCEN:
 
 
     def emprise_drone(self):
-
+        # Suppression des couches existantes avec le même nom
         for lyr in QgsProject.instance().mapLayers().values():
             if lyr.name() == "Emprise images drone":
                 QgsProject.instance().removeMapLayers([lyr.id()])
 
-        managerAU = QgsApplication.authManager()
-        k = managerAU.availableAuthMethodConfigs().keys()
+        # Création de l'URI pour la couche WFS d'emprise des images drone
+        uri = QgsDataSourceUri()
+        uri.setParam("url", "https://opendata.cen-nouvelle-aquitaine.org/drone/wfs")
+        uri.setParam("typename", "drone:emprise_ortho_drone_CEN_NA")
+        
+        # Applique l'authentification
+        if not self.apply_authentication_if_needed(uri):
+            return  # Abandonner si l'authentification échoue
 
-        uri = ["https://opendata.cen-nouvelle-aquitaine.org/drone/wfs?VERSION=1.0.0&TYPENAME=drone:emprise_ortho_drone_CEN_NA&authcfg=", list(k)[0] ,"&request=GetFeature"]
-        uri = "".join(uri)
+        # Chargement de la couche avec un filtre départemental basé sur la sélection
+        selected_dept = self.dlg.comboBox_2.currentText()
+        self.emprise_drone = QgsVectorLayer(uri.uri(False), "Emprise images drone", "WFS")
+        self.emprise_drone.setSubsetString(f"\"dept\" = '{selected_dept}'")
 
-        self.emprise_drone = QgsVectorLayer(uri, "Emprise images drone", "WFS")
+        # Vérifie si la couche est valide et l'ajoute au projet
+        if self.emprise_drone.isValid():
+            QgsProject.instance().addMapLayer(self.emprise_drone)
 
-        self.emprise_drone.selectByExpression("\"dept\" IS '{0}'".format(self.dlg.comboBox_2.currentText()))
+            # Chargement du style à partir d'une URL externe
+            styles_url = 'https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/fluxcen/main/styles_couches/emprise_drone.qml'
+            response = urllib.request.urlopen(styles_url)
+            style_data = response.read().decode("utf-8")
 
-        QgsProject.instance().addMapLayer(self.emprise_drone)
+            # Importer le style QML dans QGIS
+            document = QDomDocument()
+            document.setContent(style_data)
+            self.emprise_drone.importNamedStyle(document)
+            self.emprise_drone.triggerRepaint()
 
-        styles_url = 'https://raw.githubusercontent.com/CEN-Nouvelle-Aquitaine/fluxcen/main/styles_couches/emprise_drone.qml'
+            # Zoom sur la sélection
+            iface.mapCanvas().setExtent(self.emprise_drone.extent())
+            iface.mapCanvas().refresh()
 
-        fp = urllib.request.urlopen(styles_url)
-        mybytes = fp.read()
+            # Vérification de la présence de données
+            if self.emprise_drone.featureCount() == 0:
+                QMessageBox.question(self.iface.mainWindow(), u"Données non disponibles", 
+                                    u"Aucune données drone enregistrées sur ce département", 
+                                    QMessageBox.Ok)
 
-        document = QDomDocument()
-        document.setContent(mybytes)
-
-        res = self.emprise_drone.importNamedStyle(document)
-        self.emprise_drone.triggerRepaint()
-
-
-        iface.mapCanvas().zoomToSelected(self.emprise_drone)
-
-        iface.mapCanvas().refresh()
-
-
-        if self.emprise_drone.selectedFeatureCount() == 0:
-            print(self.emprise_drone.featureCount())
-            QMessageBox.question(self.iface.mainWindow(), u"Données non disponibles", u"Aucune données drone enregistrées sur ce département", QMessageBox.Ok)
-
-        self.emprise_drone.removeSelection()
-
-
+            # Nettoyage de la sélection après affichage
+            self.emprise_drone.removeSelection()
 
 
     def chargement_drone(self):
+
+        uri = QgsDataSourceUri()
+        if not self.apply_authentication_if_needed(uri):
+            return  # Skip if authentication fails
+        authcfg = uri.authConfigId()  # Retrieve the authentication ID applied by apply_authentication_if_needed
 
         if len(self.emprise_drone.selectedFeatures()) == 0:
             QMessageBox.question(self.iface.mainWindow(), u"Aucune emprise drone sélectionnée",
@@ -712,24 +958,38 @@ class LoaderCEN:
             self.dlg.label_12.show()
             self.dlg.label_15.show()
 
+            
             for feature in self.emprise_drone.selectedFeatures():
                 image_drone = feature['nomcouche']
 
-                uri = "url=https://opendata.cen-nouvelle-aquitaine.org/geoserver/drone/wms&service=WMS+Raster&version=1.0.0&crs=EPSG:2154&format=image/png&layers=",image_drone,"&styles"
-                uri = "".join(uri)
+                # Define the WMS URL and add auth configuration
+                image_drone_url = (
+                    f"authcfg={authcfg}"  # Ajout de l'authentification
+                    f"&contextualWMSLegend=0"
+                    f"&crs=EPSG:2154"
+                    f"&dpiMode=7&featureCount=10"
+                    f"&format=image/png"
+                    f"&layers={image_drone}"  # Insère image_drone dans l'URL
+                    f"&styles&tilePixelRatio=0"
+                    f"&url=https://opendata.cen-nouvelle-aquitaine.org/drone/wms"
 
-                rlayer = QgsRasterLayer(uri, image_drone, "WMS")
+                )
+         
+
+                rlayer = QgsRasterLayer(image_drone_url, image_drone, "wms")
                 QgsProject.instance().addMapLayer(rlayer)
 
-            self.dlg.label_2.hide()
-            self.dlg.label_3.hide()
-            self.dlg.label_10.hide()
-            self.dlg.label_12.hide()
-            self.dlg.label_15.hide()
 
-            iface.mapCanvas().zoomToSelected(self.emprise_drone)
+        # Masque les labels
+        self.dlg.label_2.hide()
+        self.dlg.label_3.hide()
+        self.dlg.label_10.hide()
+        self.dlg.label_12.hide()
+        self.dlg.label_15.hide()
 
-            self.emprise_drone.removeSelection()
+        # Zoom sur les entités sélectionnées
+        iface.mapCanvas().zoomToSelected(self.emprise_drone)
+        self.emprise_drone.removeSelection()
 
 
     def verif_memoire_libre(self):
@@ -779,42 +1039,73 @@ class LoaderCEN:
                 self.chargement_dalles_lidar()
 
 
+
     def chargement_dalles_lidar(self):
-
+        # Check if a department is selected
         if self.dlg.comboBox_3.currentText() == "Choix du département":
-            QMessageBox.question(self.iface.mainWindow(), u"Choix du département", u"Veuillez sélectionner un département afin de charger le dallage Lidar associé !", QMessageBox.Ok)
+            QMessageBox.question(self.iface.mainWindow(), "Choix du département", 
+                                "Veuillez sélectionner un département afin de charger le dallage Lidar associé !", 
+                                QMessageBox.Ok)
+            return  # Stop the function if no department is selected
 
+        # Check if the 'Dalles Lidar' layer is already loaded
+        dalles_lidar = QgsProject.instance().mapLayersByName("Dalles Lidar")
+        if not dalles_lidar:
+            # URL for the WFS service with the API key and version
+            wfs_dalles_lidar_url = ('https://data.geopf.fr/private/wfs/?version=2.0.0&apikey=interface_catalogue&typename=IGNF_LIDAR-HD_TA:nuage-dalle')
+            
+            # Create the WFS layer
+            dalles_lidar = QgsVectorLayer(wfs_dalles_lidar_url, 'Dalles Lidar', 'WFS')
+            QgsProject.instance().addMapLayer(dalles_lidar)
+            
+            # Apply symbol styling
+            mySymbol1 = QgsFillSymbol.createSimple({'color': 'transparent', 'outline_color': 'blue', 'outline_width': '0.1'})
+            dalles_lidar.renderer().setSymbol(mySymbol1)
+            dalles_lidar.triggerRepaint()
         else:
-            for lyr in QgsProject.instance().mapLayers().values():
+            dalles_lidar = dalles_lidar[0]  # Use the already loaded layer
 
-                if lyr.name() == "Dalles Lidar":
-                    QgsProject.instance().removeMapLayers([lyr.id()])
+        # Check if the 'Nouvelle-Aquitaine' layer is already loaded
+        selected_departement = QgsProject.instance().mapLayersByName("Nouvelle-Aquitaine")
+        if not selected_departement:
+            # WFS URL for the department layer
+            wfs_departement_url = 'https://opendata.cen-nouvelle-aquitaine.org/administratif/wfs/?version=1.0.0&typename=administratif:departement&srsname=EPSG:2154'
+            selected_departement = QgsVectorLayer(wfs_departement_url, "Nouvelle-Aquitaine", 'WFS')
+            
+            # Apply symbol styling
+            mySymbol2 = QgsFillSymbol.createSimple({'color': 'transparent', 'outline_color': 'red', 'outline_width': '0.7'})
+            selected_departement.renderer().setSymbol(mySymbol2)
+            selected_departement.triggerRepaint()
+            
+            QgsProject.instance().addMapLayer(selected_departement)
+        else:
+            selected_departement = selected_departement[0]  # Use the already loaded layer
 
-        # Create a vector layer from the GeoJSON file
-        dalles_lidar = QgsVectorLayer('https://sig.dsi-cen.org/qgis/downloads/dalles_lidar.geojson', 'Dalles Lidar', 'ogr')
+        
+        print(dalles_lidar.extent())
+        print(dalles_lidar.crs())
+        print(selected_departement.extent())
+        print(selected_departement.crs())
 
-        # Check if the layer was loaded successfully
-        if not dalles_lidar.isValid():
-            print('Layer failed to load!')
+        # Apply subset filter to the selected department
+        selected_departement.setSubsetString(f"nom_dep='{self.dlg.comboBox_3.currentText()}'")
 
-        dalles_lidar.setSubsetString('nom_dep=\'' + self.dlg.comboBox_3.currentText() + '\'')
+        # Start a timer to check if the layer has a valid extent before zooming
+        self.zoom_timer = QTimer()
+        self.zoom_timer.timeout.connect(lambda: self.check_and_zoom(selected_departement))
+        self.zoom_timer.start(500)  # Check every 500 ms
 
-        # Add the layer to the map
-        QgsProject.instance().addMapLayer(dalles_lidar)
+    def check_and_zoom(self, layer):
+        """Check if the layer has a valid extent and zoom to it."""
+        if layer.isValid() and layer.extent().isEmpty() is False:
+            # Zoom to layer extent
+            ex = layer.extent().buffered(layer.extent().width() * 0.10)  # Add a 10% buffer for better view
+            iface.mapCanvas().setExtent(ex)
+            iface.mapCanvas().refresh()
 
+            # Stop the timer as the zoom has been completed
+            self.zoom_timer.stop()
 
-        mySymbol1 = QgsFillSymbol.createSimple({'color': '#0000ffff',
-                                                'color_border': '#22222',
-                                                'width_border': '0.3'})
-
-        myRenderer = dalles_lidar.renderer()
-
-        myRenderer.setSymbol(mySymbol1)
-
-        dalles_lidar.triggerRepaint()
-
-        ex = dalles_lidar.extent()
-        iface.mapCanvas().setExtent(ex)
 
     def chargement_lidar(self):
 
@@ -867,8 +1158,3 @@ class LoaderCEN:
 
             self.dalles_lidar.removeSelection()
 
-
-    def popup(self):
-
-        self.dialog = Popup()  # +++ - self
-        self.dialog.text_edit.show()
