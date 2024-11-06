@@ -228,7 +228,7 @@ class LoaderCEN:
         # Ajouter une image (remplace 'maj_4.5.JPG' par le chemin de ton image)
         label_image = QLabel()
         pixmap = QPixmap(self.plugin_path + "/html/images/logo_loadercen2.JPG")  
-
+        print(self.plugin_path + "/html/images/logo_loadercen2.JPG")
         # Vérifier si l'image existe et est chargée
         if not pixmap.isNull():
             # Redimensionner l'image à une taille raisonnable si nécessaire
