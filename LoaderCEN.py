@@ -411,7 +411,7 @@ class LoaderCEN:
         if self.is_first_run_of_new_version():
             self.show_welcome_popup()
 
-        icon_path = ':/plugins/LoaderCEN/icon.png'
+        icon_path = os.path.join(os.path.dirname(__file__), 'icons/icon.png')
         self.add_action(
             icon_path,
             text=self.tr(u'LoaderCEN'),

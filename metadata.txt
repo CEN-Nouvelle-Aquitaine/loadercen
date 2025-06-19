@@ -10,7 +10,7 @@ version=3.6
 author=Romain Montillet
 email=r.montillet@cen-na.org
 
-about=Le plugin LoaderCEN permet de faciliter le téléchargement du MNT 1 mètre et/ou des ortophotos sur une zone souhaitée à partir d'une couche de dalles à pré-charger dans QGIS. Le téléchargement des orthophotos 20cm peut s'avérer assez lourd et nécessite donc une bonne connexion internet.
+about=<img src="icons/icon.png" width="200"><br>Le plugin LoaderCEN permet de faciliter le téléchargement du MNT 1 mètre et/ou des ortophotos sur une zone souhaitée à partir d'une couche de dalles à pré-charger dans QGIS. Le téléchargement des orthophotos 20cm peut s'avérer assez lourd et nécessite donc une bonne connexion internet.
 
 tracker=faire un ticket si problème
 repository=https://sig.dsi-cen.org/qgis/
